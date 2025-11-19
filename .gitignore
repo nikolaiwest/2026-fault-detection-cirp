@@ -1,3 +1,13 @@
+# Project-specific data directories
+data/processed/
+data/pyscrew/
+
+# Large binary files
+*.pkl
+*.joblib
+*.h5
+*.hdf5
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
