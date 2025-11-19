@@ -266,5 +266,54 @@ def upsample_normal_runs(data: Dict, ratio: float) -> Dict:
 
 
 def encode_labels(data: Dict) -> Dict:
-    """Int-encoding for the string representations of 'class_values'."""
-    return data
+    """Int-encoding for the string representations of 'class_values'.
+
+    Normal class ('000_normal-observations' or '001_artificial_ok') always gets label 0.
+    Saves label mapping to JSON for later reference."""
+
+    import json
+
+    class_values = data["class_values"]
+
+    # Separate normal and fault classes
+    normal_classes = [NORMAL_CLASS_VALUE, "001_artificial_ok"]
+    unique_classes = sorted(set(class_values))
+
+    # Build mapping: normal classes = 0, faults = 1, 2, 3, ...
+    label_to_int = {}
+
+    # First: all normal classes to 0
+    for normal_cls in normal_classes:
+        if normal_cls in unique_classes:
+            label_to_int[normal_cls] = 0
+
+    # Then: fault classes to 1, 2, 3, ...
+    fault_idx = 1
+    for cls in unique_classes:
+        if cls not in normal_classes:
+            label_to_int[cls] = fault_idx
+            fault_idx += 1
+
+    # Encode labels
+    encoded_labels = [label_to_int[label] for label in class_values]
+
+    # Save mapping to JSON
+    mapping_file = Path("data/processed/label_mapping.json")
+    mapping_file.parent.mkdir(parents=True, exist_ok=True)
+
+    with open(mapping_file, "w") as f:
+        json.dump(label_to_int, f, indent=2)
+
+    n_normal = sum(1 for lbl in encoded_labels if lbl == 0)
+    n_faults = len(encoded_labels) - n_normal
+
+    print(
+        f"- Encoded {len(label_to_int)} classes: {n_normal} normal (0), {n_faults} faults (1-{fault_idx-1})"
+    )
+    print(f"- Saved mapping to {mapping_file}")
+
+    return {
+        "torque_values": data["torque_values"],
+        "labels": encoded_labels,
+        "label_mapping": label_to_int,
+    }
