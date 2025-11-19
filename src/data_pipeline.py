@@ -123,8 +123,42 @@ def remove_exceptions(data: Dict, keep: bool = False) -> Dict:
 
 
 def filter_classes(data: Dict, classes: List[str]) -> Dict:
-    """Keep only selected fault classes."""
-    return data
+    """Keep only the selected fault classes by simple filtering.
+
+    The classes used in the list were selected based on there origin (one per each
+    group of error causes) and their general sense of uniqueness."""
+
+    if not classes:
+        print("   No classes specified, keeping all samples")
+        return data
+
+    # Get class mask (True = keep, False = remove)
+    class_values = data["class_values"]
+    keep_mask = [cls in classes for cls in class_values]
+
+    n_total = len(class_values)
+    n_keep = sum(keep_mask)
+    n_remove = n_total - n_keep
+
+    print(f"- Filter to {len(classes)} classes, removing {n_remove}, keeping {n_keep}")
+
+    # Use the mask to filter all dict fields
+    filtered_data = {}
+    for key, values in data.items():
+        if isinstance(values, (list, tuple)) and len(values) == n_total:
+            filtered_data[key] = [v for v, keep in zip(values, keep_mask) if keep]
+        elif isinstance(values, (list, tuple)):
+            raise ValueError(
+                f"Field '{key}' has unexpected length {len(values)} "
+                f"(expected {n_total}). Data structure inconsistent!"
+            )
+        else:
+            raise TypeError(
+                f"Field '{key}' is type {type(values).__name__}, expected list. "
+                f"Data structure unexpected!"
+            )
+
+    return filtered_data
 
 
 def keep_only_torque(data: Dict) -> Dict:
