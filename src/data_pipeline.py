@@ -162,8 +162,14 @@ def filter_classes(data: Dict, classes: List[str]) -> Dict:
 
 
 def keep_only_torque(data: Dict) -> Dict:
-    """Extract torque + labels, drop other signals."""
-    return data
+    """Extract torque only labels,by dropping all other measurements."""
+
+    print(f"- Keeping only torque and classes, dropping {len(data) - 2}fields")
+
+    return {
+        "torque_values": data["torque_values"],
+        "class_values": data["class_values"],
+    }
 
 
 def upsample_normal_runs(data: Dict, ratio: float) -> Dict:
