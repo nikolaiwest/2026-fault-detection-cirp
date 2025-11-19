@@ -6,13 +6,20 @@ import numpy as np
 import pyscrew
 from imblearn.over_sampling import SMOTE
 
-CLASSES_TO_KEEP = ["001_control-group", "101_deformed-thread"]
+NORMAL_CLASS_VALUE = "000_normal-observations"
+FAULTY_CLASSES_TO_KEEP = [
+    "101_deformed-thread",
+    "201_damaged-contact-surface",
+    "301_plastic-pin-screw-hole",
+    "401_surface-lubricant",
+    "501_increased-ang-velocity",
+]
 
 
 def run_data_pipeline(
     force_reload: bool = False,
     keep_exceptions: bool = False,
-    classes_to_keep: list[str] = CLASSES_TO_KEEP,
+    classes_to_keep: list[str] = FAULTY_CLASSES_TO_KEEP,
     target_ok_ratio: float = 0.99,
 ) -> Dict:
     """Main interface to execute the complete data preprocessing pipeline.
@@ -31,16 +38,19 @@ def run_data_pipeline(
     # Step 2: Remove all scenario exceptions (with issues during recording)
     data = remove_exceptions(data, keep_exceptions)
 
-    # Step 3: Limit the number of classes (for easier understanding)
+    # Step 3: Create normal class from scenario_condition == 'normal'
+    data = create_ok_class(data)
+
+    # Step 4: Limit the number of classes (for easier understanding)
     data = filter_classes(data, classes_to_keep)
 
-    # Step 4: Extract torque as only measurements (others are not needed)
+    # Step 5: Extract torque as only measurements (others are not needed)
     data = keep_only_torque(data)
 
-    # Step 5: Upsample normal observations (to achieve a target OK ratio)
+    # Step 6: Upsample normal observations (to achieve a target OK ratio)
     data = upsample_normal_runs(data, target_ok_ratio)
 
-    # Step 6: Use ints to represent the value values (originally str)
+    # Step 7: Use ints to represent the class values (originally str)
     data = encode_labels(data)
 
     print("Pipeline complete!")
@@ -124,19 +134,49 @@ def remove_exceptions(data: Dict, keep: bool = False) -> Dict:
     return filtered_data
 
 
+def create_ok_class(data: Dict) -> Dict:
+    """Create '000_normal-observations' class from all normal samples. Overwrites class_values
+    with '000_normal-observations' where scenario_condition == 'normal'.
+
+    Originally, normal and faulty data was recorded alternately to prevent temporal factors
+    from influencing the observations. To obtain a pure OK class, normal observations must
+    therefore be sorted into their own class."""
+
+    scenario_conditions = data["scenario_condition"]
+    class_values = data["class_values"]
+
+    # Overwrite class_values for normal observations
+    new_class_values = []
+    for condition, original_class in zip(scenario_conditions, class_values):
+        if condition == "normal":
+            new_class_values.append(NORMAL_CLASS_VALUE)
+        else:
+            new_class_values.append(original_class)
+
+    n_ok = sum(1 for c in new_class_values if c == NORMAL_CLASS_VALUE)
+    n_faults = len(new_class_values) - n_ok
+
+    print(f"- Separated '000_normal-observations': {n_ok} normal, {n_faults} faults")
+
+    data["class_values"] = new_class_values
+    return data
+
+
 def filter_classes(data: Dict, classes: List[str]) -> Dict:
     """Keep only the selected fault classes by simple filtering.
-
-    The classes used in the list were selected based on there origin (one per each
+    The classes used in the list were selected based on their origin (one per each
     group of error causes) and their general sense of uniqueness."""
 
-    if not classes:
-        print("   No classes specified, keeping all samples")
+    # Always include normal class
+    classes_with_normal = classes + [NORMAL_CLASS_VALUE]
+
+    if not classes_with_normal:
+        print("- No classes specified, keeping all samples")
         return data
 
     # Get class mask (True = keep, False = remove)
     class_values = data["class_values"]
-    keep_mask = [cls in classes for cls in class_values]
+    keep_mask = [cls in classes_with_normal for cls in class_values]
 
     n_total = len(class_values)
     n_keep = sum(keep_mask)
@@ -181,7 +221,7 @@ def upsample_normal_runs(data: Dict, ratio: float) -> Dict:
     data. Synthetic samples are labeled as '001_artificial_ok' for transparency."""
 
     # Identify normal samples
-    normal_label = "001_control-group"  # default value for OK in PyScrew "s04"
+    normal_label = "000_normal-observations"  # default value for OK in PyScrew "s04"
     class_values = data["class_values"]
 
     n_total = len(class_values)
