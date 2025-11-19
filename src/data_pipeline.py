@@ -81,25 +81,62 @@ def load_data(force_reload=False):
 
 
 def remove_exceptions(data: Dict, keep: bool = False) -> Dict:
-    """Remove measurement problems (not real faults)."""
-    pass
+    """Remove samples with measurement problems (not real faults).
+
+    Measurement exceptions are indicated by 'scenario_exception' == 1.
+    These are recording issues, not actual process faults."""
+
+    if keep:
+        print("Keeping all samples (including exceptions)")
+        return data
+
+    # Get exception mask (True = keep, False = remove)
+    exceptions = data["scenario_exception"]
+    keep_mask = [exc != 1 for exc in exceptions]
+
+    n_total = len(exceptions)
+    n_exceptions = sum(1 for exc in exceptions if exc == 1)
+    n_keep = sum(keep_mask)
+
+    print(f"- Found {n_exceptions} exceptions in {n_total} samples, keeping {n_keep}")
+
+    # Use the mask to filter all dict fields
+    filtered_data = {}
+    for key, values in data.items():
+        # Check if it's a list/array we should filter
+        if isinstance(values, (list, tuple)) and len(values) == n_total:
+            filtered_data[key] = [v for v, keep in zip(values, keep_mask) if keep]
+        elif isinstance(values, (list, tuple)):
+            # Different length found, something is wrong with the raw data
+            raise ValueError(
+                f"Field '{key}' has unexpected length {len(values)} "
+                f"(expected {n_total}). Data structure inconsistent!"
+            )
+        else:
+            # Not a list, this should not happen in pyscrew data
+            raise TypeError(
+                f"Field '{key}' is type {type(values).__name__}, expected list. "
+                f"Data structure unexpected!"
+            )
+
+    return filtered_data
 
 
 def filter_classes(data: Dict, classes: List[str]) -> Dict:
     """Keep only selected fault classes."""
-    pass
+    return data
 
 
 def keep_only_torque(data: Dict) -> Dict:
     """Extract torque + labels, drop other signals."""
-    pass
+    return data
 
 
 def upsample_normal_runs(data: Dict, ratio: float) -> Dict:
     """SMOTE upsampling of OK class."""
-    pass
+    return data
 
 
 def encode_labels(data: Dict) -> Dict:
     """Int-encoding for the string representations of 'class_values'."""
-    pass
+    return data
