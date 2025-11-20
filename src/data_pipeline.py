@@ -1,3 +1,4 @@
+import json
 import pickle
 from pathlib import Path
 from typing import Dict, List
@@ -265,8 +266,6 @@ def encode_labels(data: Dict) -> Dict:
 
     Normal class ('000_normal-observations' or '001_artificial_ok') always gets label 0.
     Saves label mapping to JSON for later reference."""
-
-    import json
 
     class_values = data["class_values"]
 
