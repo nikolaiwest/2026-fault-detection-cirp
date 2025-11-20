@@ -6,7 +6,7 @@ import numpy as np
 import pyscrew
 from imblearn.over_sampling import SMOTE
 
-from .config import load_class_config
+from src.config_loader import load_class_config
 
 NORMAL_CLASS_VALUE = "000_normal-observations"
 
