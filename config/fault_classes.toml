@@ -1,0 +1,90 @@
+# config/fault_classes.toml
+
+[class_sets]
+# All available fault classes (24 total, excluding control group)
+all = [
+    "001_control-group",
+    "101_deformed-thread",
+    "102_filed-screw-tip",
+    "103_glued-screw-tip",
+    "104_coated-screw",
+    "105_worn-out-screw",
+    "201_damaged-contact-surface",
+    "202_broken-contact-surface",
+    "203_metal-ring-upper-part",
+    "204_rubber-ring-upper-part",
+    "205_different-material",
+    "301_plastic-pin-screw-hole",
+    "302_enlarged-screw-hole",
+    "303_less-glass-fiber",
+    "304_glued-screw-hole",
+    "305_gap-between-parts",
+    "401_surface-lubricant",
+    "402_surface-moisture",
+    "403_plastic-chip",
+    "404_increased-temperature",
+    "405_decreased-temperature",
+    "501_increased-ang-velocity",
+    "502_decreased-ang-velocity",
+    "503_increased-torque",
+    "504_decreased-torque",
+]
+
+# Top 5 most detectable (F1 >= 0.914)
+top5 = [
+    "204_rubber-ring-upper-part",      # F1=1.000
+    "205_different-material",          # F1=1.000
+    "302_enlarged-screw-hole",         # F1=1.000
+    "401_surface-lubricant",           # F1=1.000
+    "501_increased-ang-velocity",      # F1=0.914
+]
+
+# Top 10 most detectable (F1 >= 0.828)
+top10 = [
+    "204_rubber-ring-upper-part",      # F1=1.000
+    "205_different-material",          # F1=1.000
+    "302_enlarged-screw-hole",         # F1=1.000
+    "401_surface-lubricant",           # F1=1.000
+    "405_decreased-temperature",       # F1=0.966
+    "303_less-glass-fiber",            # F1=0.963
+    "203_metal-ring-upper-part",       # F1=0.933
+    "504_decreased-torque",            # F1=0.929
+    "501_increased-ang-velocity",      # F1=0.914
+    "403_plastic-chip",                # F1=0.897
+]
+
+
+[detectability]
+# F1 scores from binary classification test
+"001_control-group" = 0.000
+"101_deformed-thread" = 0.000
+"102_filed-screw-tip" = 0.783
+"103_glued-screw-tip" = 0.235
+"104_coated-screw" = 0.118
+"105_worn-out-screw" = 0.560
+"201_damaged-contact-surface" = 0.476
+"202_broken-contact-surface" = 0.880
+"203_metal-ring-upper-part" = 0.933
+"204_rubber-ring-upper-part" = 1.000
+"205_different-material" = 1.000
+"301_plastic-pin-screw-hole" = 0.769
+"302_enlarged-screw-hole" = 1.000
+"303_less-glass-fiber" = 0.963
+"304_glued-screw-hole" = 0.667
+"305_gap-between-parts" = 0.828
+"401_surface-lubricant" = 1.000
+"402_surface-moisture" = 0.000
+"403_plastic-chip" = 0.897
+"404_increased-temperature" = 0.615
+"405_decreased-temperature" = 0.966
+"501_increased-ang-velocity" = 0.914
+"502_decreased-ang-velocity" = 0.743
+"503_increased-torque" = 0.743
+"504_decreased-torque" = 0.929
+
+[metadata]
+# Test parameters
+test_date = "2025-11-20"
+test_method = "Binary Random Forest (200 PAA segments)"
+train_test_split = 0.7
+n_estimators = 100

@@ -6,21 +6,16 @@ import numpy as np
 import pyscrew
 from imblearn.over_sampling import SMOTE
 
+from .config import load_class_config
+
 NORMAL_CLASS_VALUE = "000_normal-observations"
-FAULTY_CLASSES_TO_KEEP = [
-    "101_deformed-thread",
-    "201_damaged-contact-surface",
-    "301_plastic-pin-screw-hole",
-    "401_surface-lubricant",
-    "501_increased-ang-velocity",
-]
 
 
 def run_data_pipeline(
     force_reload: bool = False,
     keep_exceptions: bool = False,
-    classes_to_keep: list[str] = FAULTY_CLASSES_TO_KEEP,
-    target_ok_ratio: float = 0.99,
+    classes_to_keep: list[str] = load_class_config("all"),
+    target_ok_ratio: float = 0.9,
 ) -> Dict:
     """Main interface to execute the complete data preprocessing pipeline.
 
