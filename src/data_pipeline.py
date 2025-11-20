@@ -1,3 +1,4 @@
+import json
 import pickle
 from pathlib import Path
 from typing import Dict, List
@@ -22,8 +23,9 @@ def run_data_pipeline(
     Args:
         force_reload: Reload from PyScrew (will ignore the cache)
         keep_exceptions: If True, keep measurement exceptions (default: remove)
-        classes_to_keep: List of class names to keep (uses "all" if set to None)
-        target_ok_ratio: Target ratio of OK samples (0.99 = 99% OK, 1% faults)"""
+        classes_to_keep: List of class names to keep (default set here as globals)
+        target_ok_ratio: Target ratio of OK samples (0.99 = 99% OK, 1% faults).
+    """
 
     if classes_to_keep is None:
         classes_to_keep = load_class_config("all")
@@ -202,7 +204,7 @@ def filter_classes(data: Dict, classes: List[str]) -> Dict:
 
 
 def keep_only_torque(data: Dict) -> Dict:
-    """Extract torque only labels,by dropping all other measurements."""
+    """Extract torque only labels, by dropping all other measurements."""
 
     print(f"- Keeping only torque and classes, dropping {len(data) - 2} fields")
 
@@ -268,8 +270,6 @@ def encode_labels(data: Dict) -> Dict:
 
     Normal class ('000_normal-observations' or '001_artificial_ok') always gets label 0.
     Saves label mapping to JSON for later reference."""
-
-    import json
 
     class_values = data["class_values"]
 
