@@ -14,7 +14,7 @@ NORMAL_CLASS_VALUE = "000_normal-observations"
 def run_data_pipeline(
     force_reload: bool = False,
     keep_exceptions: bool = False,
-    classes_to_keep: list[str] = load_class_config("all"),
+    classes_to_keep: list[str] | None = None,
     target_ok_ratio: float = 0.9,
 ) -> Dict:
     """Main interface to execute the complete data preprocessing pipeline.
@@ -22,8 +22,11 @@ def run_data_pipeline(
     Args:
         force_reload: Reload from PyScrew (will ignore the cache)
         keep_exceptions: If True, keep measurement exceptions (default: remove)
-        classes_to_keep: List of class names to keep (default set here as globals)
+        classes_to_keep: List of class names to keep (uses "all" if set to None)
         target_ok_ratio: Target ratio of OK samples (0.99 = 99% OK, 1% faults)"""
+
+    if classes_to_keep is None:
+        classes_to_keep = load_class_config("all")
 
     print("Starting pipeline...")
 
