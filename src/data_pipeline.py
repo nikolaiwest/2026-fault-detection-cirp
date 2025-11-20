@@ -24,7 +24,8 @@ def run_data_pipeline(
         force_reload: Reload from PyScrew (will ignore the cache)
         keep_exceptions: If True, keep measurement exceptions (default: remove)
         classes_to_keep: List of class names to keep (default set here as globals)
-        target_ok_ratio: Target ratio of OK samples (0.99 = 99% OK, 1% faults)"""
+        target_ok_ratio: Target ratio of OK samples (0.99 = 99% OK, 1% faults).
+    """
 
     print("Starting pipeline...")
 
@@ -200,7 +201,7 @@ def filter_classes(data: Dict, classes: List[str]) -> Dict:
 
 
 def keep_only_torque(data: Dict) -> Dict:
-    """Extract torque only labels,by dropping all other measurements."""
+    """Extract torque only labels, by dropping all other measurements."""
 
     print(f"- Keeping only torque and classes, dropping {len(data) - 2} fields")
 
