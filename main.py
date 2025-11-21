@@ -1,7 +1,9 @@
+# from src.anomaly_detection import test_anomaly_detection
+from src.binary_classification import test_binary_per_class
 from src.data_pipeline import run_data_pipeline
 
-if __name__ == "__main__":
 
+def test_pipeline():
     # Simple test for the pipeline with defaults
     print("Testing data pipeline...")
 
@@ -15,3 +17,10 @@ if __name__ == "__main__":
     print("\n" + "=" * 60)
     print("Pipeline test complete!")
     print("=" * 60)
+
+
+if __name__ == "__main__":
+
+    # test_pipeline()
+    test_binary_per_class()
+    # test_anomaly_detection()
