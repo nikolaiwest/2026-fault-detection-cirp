@@ -15,7 +15,7 @@ def run_data_pipeline(
     force_reload: bool = False,
     keep_exceptions: bool = False,
     classes_to_keep: list[str] | None = None,
-    target_ok_ratio: float = 0.9,
+    target_ok_ratio: float = 0.99,
 ) -> Dict:
     """Main interface to execute the complete data preprocessing pipeline.
 
