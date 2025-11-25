@@ -1,6 +1,6 @@
-# from src.anomaly_detection import test_anomaly_detection
-from src.binary_classification import test_binary_per_class
-from src.data_pipeline import run_data_pipeline
+from src.benchmark import test_anomaly_detection, test_binary_per_class
+from src.data import run_data_pipeline
+from src.methodology import apply
 
 
 def test_pipeline():
@@ -21,6 +21,8 @@ def test_pipeline():
 
 if __name__ == "__main__":
 
-    # test_pipeline()
+    # Temporary tests during development
+    apply()
+    test_pipeline()
     test_binary_per_class()
-    # test_anomaly_detection()
+    test_anomaly_detection()
