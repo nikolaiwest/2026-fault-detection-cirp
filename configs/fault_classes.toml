@@ -1,4 +1,4 @@
-# config/fault_classes.toml
+# configs/fault_classes.toml
 
 [class_sets]
 # All available fault classes (24 total, excluding control group)
