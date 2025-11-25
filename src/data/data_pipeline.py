@@ -7,7 +7,7 @@ import numpy as np
 import pyscrew
 from imblearn.over_sampling import SMOTE
 
-from src.config_loader import load_class_config
+from .config_loader import load_class_config
 
 NORMAL_CLASS_VALUE = "000_normal-observations"
 
@@ -18,13 +18,14 @@ def run_data_pipeline(
     classes_to_keep: list[str] | None = None,
     target_ok_ratio: float = 0.99,
 ) -> Dict:
-    """Main interface to execute the complete data preprocessing pipeline.
+    """
+    Main interface to execute the complete data preprocessing pipeline.
 
     Args:
         force_reload: Reload from PyScrew (will ignore the cache)
         keep_exceptions: If True, keep measurement exceptions (default: remove)
-        classes_to_keep: List of class names to keep (default set here as globals)
-        target_ok_ratio: Target ratio of OK samples (0.99 = 99% OK, 1% faults).
+        classes_to_keep: List of class names to keep (uses "all" if set to None)
+        target_ok_ratio: Target ratio of OK samples (0.99 = 99% OK, 1% faults)
     """
 
     if classes_to_keep is None:
@@ -93,10 +94,12 @@ def load_data(force_reload=False):
 
 
 def remove_exceptions(data: Dict, keep: bool = False) -> Dict:
-    """Remove samples with measurement problems (not real faults).
+    """
+    Remove samples with measurement problems (not real faults).
 
     Measurement exceptions are indicated by 'scenario_exception' == 1.
-    These are recording issues, not actual process faults."""
+    These are recording issues, not actual process faults.
+    """
 
     if keep:
         print("Keeping all samples (including exceptions)")
@@ -135,12 +138,14 @@ def remove_exceptions(data: Dict, keep: bool = False) -> Dict:
 
 
 def create_ok_class(data: Dict) -> Dict:
-    """Create '000_normal-observations' class from all normal samples. Overwrites class_values
+    """
+    Create '000_normal-observations' class from all normal samples. Overwrites class_values
     with '000_normal-observations' where scenario_condition == 'normal'.
 
     Originally, normal and faulty data was recorded alternately to prevent temporal factors
     from influencing the observations. To obtain a pure OK class, normal observations must
-    therefore be sorted into their own class."""
+    therefore be sorted into their own class.
+    """
 
     scenario_conditions = data["scenario_condition"]
     class_values = data["class_values"]
@@ -163,9 +168,11 @@ def create_ok_class(data: Dict) -> Dict:
 
 
 def filter_classes(data: Dict, classes: List[str]) -> Dict:
-    """Keep only the selected fault classes by simple filtering.
+    """
+    Keep only the selected fault classes by simple filtering.
     The classes used in the list were selected based on their origin (one per each
-    group of error causes) and their general sense of uniqueness."""
+    group of error causes) and their general sense of uniqueness.
+    """
 
     # Always include normal class
     classes_with_normal = classes + [NORMAL_CLASS_VALUE]
@@ -215,10 +222,12 @@ def keep_only_torque(data: Dict) -> Dict:
 
 
 def upsample_normal_runs(data: Dict, ratio: float) -> Dict:
-    """SMOTE upsampling of OK class to achieve target ratio.
+    """
+    SMOTE upsampling of OK class to achieve target ratio.
 
     Upsampling the normal class aims to create more natural imbalances in the screw
-    data. Synthetic samples are labeled as '001_artificial_ok' for transparency."""
+    data. Synthetic samples are labeled as '001_artificial_ok' for transparency.
+    """
 
     # Identify normal samples
     normal_label = "000_normal-observations"  # default value for OK in PyScrew "s04"
@@ -266,10 +275,14 @@ def upsample_normal_runs(data: Dict, ratio: float) -> Dict:
 
 
 def encode_labels(data: Dict) -> Dict:
-    """Int-encoding for the string representations of 'class_values'.
+    """
+    Int-encoding for the string representations of 'class_values'.
 
     Normal class ('000_normal-observations' or '001_artificial_ok') always gets label 0.
-    Saves label mapping to JSON for later reference."""
+    Saves label mapping to JSON for later reference.
+    """
+
+    import json
 
     class_values = data["class_values"]
 

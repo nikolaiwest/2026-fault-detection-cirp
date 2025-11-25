@@ -1,0 +1,2 @@
+from .anomaly_detection import test_anomaly_detection
+from .binary_classification import test_binary_per_class

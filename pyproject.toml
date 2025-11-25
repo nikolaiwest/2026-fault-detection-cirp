@@ -8,8 +8,10 @@ dependencies = [
     "imbalanced-learn>=0.14.0",
     "numpy>=2.3.5",
     "pandas>=2.3.3",
+    "pyod>=2.0.5",
     "pyscrew>=1.2.2",
     "scikit-learn>=1.7.2",
+    "sktime>=0.39.0",
 ]
 
 [dependency-groups]

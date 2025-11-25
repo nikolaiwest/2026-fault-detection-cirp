@@ -6,18 +6,8 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
 
-from src.config_loader import load_class_config
-from src.data_pipeline import run_data_pipeline
-
-
-def apply_paa(X, n_segments=200):
-    """Simple PAA compression."""
-    n_samples, n_timepoints = X.shape
-    segment_size = n_timepoints // n_segments
-    X_reshaped = X[:, : segment_size * n_segments].reshape(
-        n_samples, n_segments, segment_size
-    )
-    return X_reshaped.mean(axis=2)
+from src.data import load_class_config, run_data_pipeline
+from src.features import apply_paa
 
 
 def test_binary_per_class():
