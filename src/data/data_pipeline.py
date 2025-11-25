@@ -1,3 +1,4 @@
+import json
 import pickle
 from pathlib import Path
 from typing import Dict, List
@@ -210,7 +211,7 @@ def filter_classes(data: Dict, classes: List[str]) -> Dict:
 
 
 def keep_only_torque(data: Dict) -> Dict:
-    """Extract torque only labels,by dropping all other measurements."""
+    """Extract torque only labels, by dropping all other measurements."""
 
     print(f"- Keeping only torque and classes, dropping {len(data) - 2} fields")
 
