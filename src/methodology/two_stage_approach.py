@@ -3,7 +3,6 @@
 # demonstrate the methodology (ligh level interface )
 
 
-def apply():
-    """Place holder for the main function of this project."""
-    print("Update placeholder!")
+def run():
+    """Main entry point for the two-stage methodology."""
     pass

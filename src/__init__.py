@@ -1,1 +1,1 @@
-from .methodology import apply
+from .methodology import two_stage_approach
