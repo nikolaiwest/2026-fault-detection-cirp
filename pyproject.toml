@@ -12,6 +12,7 @@ dependencies = [
     "pyscrew>=1.2.2",
     "scikit-learn>=1.7.2",
     "sktime>=0.39.0",
+    "torch>=2.9.1",
 ]
 
 [dependency-groups]
