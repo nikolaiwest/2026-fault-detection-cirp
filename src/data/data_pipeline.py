@@ -17,7 +17,7 @@ def run_data_pipeline(
     keep_exceptions: bool = False,
     classes_to_keep: list[str] | None = None,
     target_ok_ratio: float = 0.99,
-) -> Dict:
+) -> tuple[np.ndarray, np.ndarray, Dict[str, int]]:
     """
     Main interface to execute the complete data preprocessing pipeline.
 
@@ -40,32 +40,32 @@ def run_data_pipeline(
     print("Starting pipeline...")
 
     # Step 1: Load s04 data from PyScrew (hosted public on Zenodo)
-    data = load_data(force_reload)
+    data = _load_data(force_reload)
 
     # Step 2: Remove all scenario exceptions (with issues during recording)
-    data = remove_exceptions(data, keep_exceptions)
+    data = _remove_exceptions(data, keep_exceptions)
 
     # Step 3: Create normal class from scenario_condition == 'normal'
-    data = create_ok_class(data)
+    data = _create_ok_class(data)
 
     # Step 4: Limit the number of classes (for easier understanding)
-    data = filter_classes(data, classes_to_keep)
+    data = _filter_classes(data, classes_to_keep)
 
     # Step 5: Extract torque as only measurements (others are not needed)
-    data = keep_only_torque(data)
+    data = _keep_only_torque(data)
 
     # Step 6: Upsample normal observations (to achieve a target OK ratio)
-    data = upsample_normal_runs(data, target_ok_ratio)
+    data = _upsample_normal_runs(data, target_ok_ratio)
 
     # Step 7: Use ints to represent the class values (originally str)
-    data = encode_labels(data)
+    data = _encode_labels(data)
 
     # Step 8: Unpack and convert to numpy arrays
-    data = unpack_and_convert(data)
+    data = _unpack_and_convert(data)
     return data
 
 
-def load_data(force_reload=False):
+def _load_data(force_reload=False):
     """Load and cache preprocessed screw driving data."""
     # Define cache path
     cache_file = Path("data/processed/pyscrew_s04.pkl")
@@ -100,7 +100,7 @@ def load_data(force_reload=False):
     return data
 
 
-def remove_exceptions(data: Dict, keep: bool = False) -> Dict:
+def _remove_exceptions(data: Dict, keep: bool = False) -> Dict:
     """
     Remove samples with measurement problems (not real faults).
 
@@ -144,7 +144,7 @@ def remove_exceptions(data: Dict, keep: bool = False) -> Dict:
     return filtered_data
 
 
-def create_ok_class(data: Dict) -> Dict:
+def _create_ok_class(data: Dict) -> Dict:
     """
     Create '000_normal-observations' class from all normal samples. Overwrites class_values
     with '000_normal-observations' where scenario_condition == 'normal'.
@@ -174,7 +174,7 @@ def create_ok_class(data: Dict) -> Dict:
     return data
 
 
-def filter_classes(data: Dict, classes: List[str]) -> Dict:
+def _filter_classes(data: Dict, classes: List[str]) -> Dict:
     """
     Keep only the selected fault classes by simple filtering.
     The classes used in the list were selected based on their origin (one per each
@@ -217,7 +217,7 @@ def filter_classes(data: Dict, classes: List[str]) -> Dict:
     return filtered_data
 
 
-def keep_only_torque(data: Dict) -> Dict:
+def _keep_only_torque(data: Dict) -> Dict:
     """Extract torque only labels, by dropping all other measurements."""
 
     print(f"- Keeping only torque and classes, dropping {len(data) - 2} fields")
@@ -228,7 +228,7 @@ def keep_only_torque(data: Dict) -> Dict:
     }
 
 
-def upsample_normal_runs(data: Dict, ratio: float) -> Dict:
+def _upsample_normal_runs(data: Dict, ratio: float) -> Dict:
     """
     SMOTE upsampling of OK class to achieve target ratio.
 
@@ -281,15 +281,13 @@ def upsample_normal_runs(data: Dict, ratio: float) -> Dict:
     return data
 
 
-def encode_labels(data: Dict) -> Dict:
+def _encode_labels(data: Dict) -> Dict:
     """
     Int-encoding for the string representations of 'class_values'.
 
     Normal class ('000_normal-observations' or '001_artificial_ok') always gets label 0.
     Saves label mapping to JSON for later reference.
     """
-
-    import json
 
     class_values = data["class_values"]
 
@@ -337,7 +335,7 @@ def encode_labels(data: Dict) -> Dict:
     }
 
 
-def unpack_and_convert(data: Dict) -> tuple[np.ndarray, np.ndarray, Dict[str, int]]:
+def _unpack_and_convert(data: Dict) -> tuple[np.ndarray, np.ndarray, Dict[str, int]]:
     """
     Unpack pipeline output dict into convenient tuple format.
 
