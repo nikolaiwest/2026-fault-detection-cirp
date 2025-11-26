@@ -1,6 +1,6 @@
 from src.benchmark import test_anomaly_detection, test_binary_per_class
 from src.data import run_data_pipeline
-from src.methodology import two_stage_approach
+from src.methodology import run_two_stage_pipeline
 
 
 def test_pipeline():
@@ -22,7 +22,7 @@ def test_pipeline():
 if __name__ == "__main__":
 
     # Temporary tests during development
-    two_stage_approach()
-    test_pipeline()
-    test_binary_per_class()
-    test_anomaly_detection()
+    # test_pipeline()
+    # test_binary_per_class()
+    # test_anomaly_detection()
+    run_two_stage_pipeline()
