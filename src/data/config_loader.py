@@ -1,5 +1,81 @@
 import tomllib
+from dataclasses import dataclass
 from pathlib import Path
+
+import yaml
+
+
+@dataclass
+class DataConfig:
+    """Data pipeline configuration."""
+
+    classes_to_keep: str = "top5"
+    force_reload: bool = False
+    keep_exceptions: bool = False
+
+
+@dataclass
+class CVConfig:
+    """Cross-validation configuration."""
+
+    n_splits: int = 5
+    target_ok_ratio: float = 0.99
+    random_state: int = 42
+
+
+@dataclass
+class Stage1Config:
+    """Stage 1 anomaly detection configuration."""
+
+    contamination: float = 0.02
+    random_state: int = 42
+
+
+@dataclass
+class Stage2Config:
+    """Stage 2 clustering configuration."""
+
+    ok_reference_ratio: float = 0.01
+    n_clusters: int = 5
+    use_dtw: bool = False
+    random_state: int = 42
+
+
+@dataclass
+class PipelineConfig:
+    """Complete pipeline configuration."""
+
+    data: DataConfig
+    cross_validation: CVConfig
+    stage1: Stage1Config
+    stage2: Stage2Config
+
+
+def load_pipeline_config(config_name: str = "default-top5.yml") -> PipelineConfig:
+    """
+    Load pipeline configuration from YAML file.
+
+    Args:
+        config_name: Name of config file (e.g., "default-top5.yml")
+
+    Returns:
+        PipelineConfig: Typed configuration object
+    """
+    config_path = Path("configs") / config_name
+
+    if not config_path.exists():
+        raise FileNotFoundError(f"Config file not found: {config_path}")
+
+    with open(config_path, "r") as f:
+        config_dict = yaml.safe_load(f)
+
+    # Build typed config from dict
+    return PipelineConfig(
+        data=DataConfig(**config_dict["data"]),
+        cross_validation=CVConfig(**config_dict["cross_validation"]),
+        stage1=Stage1Config(**config_dict["stage1"]),
+        stage2=Stage2Config(**config_dict["stage2"]),
+    )
 
 
 def load_class_config(class_set: str = "all"):

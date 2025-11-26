@@ -1,0 +1,23 @@
+# Data pipeline parameters
+data:
+  classes_to_keep: "top5"
+  force_reload: false
+  keep_exceptions: false
+
+# Cross-validation parameters
+cross_validation:
+  n_splits: 5
+  target_ok_ratio: 0.99
+  random_state: 42
+
+# Stage 1: Anomaly detection
+stage1:
+  contamination: 0.03
+  random_state: 42
+
+# Stage 2: Clustering
+stage2:
+  ok_reference_ratio: 0.01
+  n_clusters: 5
+  use_dtw: false
+  random_state: 42
