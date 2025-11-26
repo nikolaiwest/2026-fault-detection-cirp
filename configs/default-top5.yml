@@ -7,17 +7,18 @@ data:
 # Cross-validation parameters
 cross_validation:
   n_splits: 5
-  target_ok_ratio: 0.99
+  target_nok_per_fold: 50
+  target_ok_per_fold: 4950
   random_state: 42
 
 # Stage 1: Anomaly detection
 stage1:
-  contamination: 0.03
+  contamination: 0.01
   random_state: 42
 
 # Stage 2: Clustering
 stage2:
-  ok_reference_ratio: 0.01
+  ok_reference_ratio: 0.005
   n_clusters: 5
-  use_dtw: false
+  use_dtw: True
   random_state: 42

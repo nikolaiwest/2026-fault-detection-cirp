@@ -19,7 +19,10 @@ class CVConfig:
     """Cross-validation configuration."""
 
     n_splits: int = 5
-    target_ok_ratio: float = 0.99
+    # NOK: int=target, None=use all samples
+    target_nok_per_fold: int | None = None
+    # OK: int=count, float=ratio, None=no upsampling
+    target_ok_per_fold: int | float | None = 0.99
     random_state: int = 42
 
 

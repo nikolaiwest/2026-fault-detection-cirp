@@ -37,7 +37,8 @@ def run_two_stage_pipeline(config_name: str = "default-top5.yml"):
         x_values=x_values,
         y_true=y_true,
         n_splits=config.cross_validation.n_splits,
-        target_ok_ratio=config.cross_validation.target_ok_ratio,
+        target_nok_per_fold=config.cross_validation.target_nok_per_fold,
+        target_ok_per_fold=config.cross_validation.target_ok_per_fold,
         random_state=config.cross_validation.random_state,
     )
 
