@@ -1,0 +1,39 @@
+# Hyperparameter documentation for Stage 1 models
+# These are the default values from PyOD library
+
+# Pipeline only overrides: contamination, random_state (and potentially verbose & n_jobs)
+
+isolation_forest:
+  # PyOD defaults (used as-is)
+  n_estimators: 100
+  max_samples: "auto"
+  max_features: 1.0
+  bootstrap: false
+  n_jobs: 1
+  behaviour: "old"
+  verbose: 0
+
+  # contamination: 0.1  --> not used (will be overwritten by pipeline config)
+  # random_state: null --> not used (will be overwritten by pipeline config) 
+  
+  # source: "pyod.models.iforest.IForest"
+  # reference: "https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.iforest"
+
+one_class_svm:
+  # PyOD defaults (used as-is)
+  kernel: "rbf"
+  degree: 3
+  gamma: "auto"
+  coef0: 0.0
+  tol: 0.001
+  nu: 0.5
+  shrinking: true
+  cache_size: 200
+  verbose: false
+  max_iter: -1
+  
+  # contamination: 0.1 --> not used (will be overwritten by pipeline config)
+  # random_state --> not available for OC-SVM
+  
+  # source: "pyod.models.ocsvm.OCSVM"
+  # reference: "https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.ocsvm"

@@ -13,12 +13,14 @@ cross_validation:
 
 # Stage 1: Anomaly detection
 stage1:
-  contamination: 0.01
+  # Options: isolation_forest, one_class_svm
+  model_name: "one_class_svm"  
+  contamination: 0.03
   random_state: 42
 
 # Stage 2: Clustering
 stage2:
-  ok_reference_ratio: 0.005
+  ok_reference_ratio: 0.01
   n_clusters: 5
-  use_dtw: True
+  use_dtw: False
   random_state: 42

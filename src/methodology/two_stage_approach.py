@@ -53,6 +53,7 @@ def run_two_stage_pipeline(config_name: str = "default-top5.yml"):
         y_anomalies, anomaly_scores = run_stage1(
             x_values=x_fold,
             y_true=y_fold,
+            model_name=config.stage1.model_name,
             contamination=config.stage1.contamination,
             random_state=config.stage1.random_state,
         )

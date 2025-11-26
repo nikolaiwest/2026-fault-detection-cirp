@@ -9,39 +9,38 @@ import yaml
 class DataConfig:
     """Data pipeline configuration."""
 
-    classes_to_keep: str = "top5"
-    force_reload: bool = False
-    keep_exceptions: bool = False
+    classes_to_keep: str
+    force_reload: bool
+    keep_exceptions: bool
 
 
 @dataclass
 class CVConfig:
     """Cross-validation configuration."""
 
-    n_splits: int = 5
-    # NOK: int=target, None=use all samples
-    target_nok_per_fold: int | None = None
-    # OK: int=count, float=ratio, None=no upsampling
-    target_ok_per_fold: int | float | None = 0.99
-    random_state: int = 42
+    n_splits: int
+    target_nok_per_fold: int | None
+    target_ok_per_fold: int | float | None
+    random_state: int
 
 
 @dataclass
 class Stage1Config:
     """Stage 1 anomaly detection configuration."""
 
-    contamination: float = 0.02
-    random_state: int = 42
+    model_name: str
+    contamination: float
+    random_state: int
 
 
 @dataclass
 class Stage2Config:
     """Stage 2 clustering configuration."""
 
-    ok_reference_ratio: float = 0.01
-    n_clusters: int = 5
-    use_dtw: bool = False
-    random_state: int = 42
+    ok_reference_ratio: float
+    n_clusters: int
+    use_dtw: bool
+    random_state: int
 
 
 @dataclass
@@ -58,11 +57,18 @@ def load_pipeline_config(config_name: str = "default-top5.yml") -> PipelineConfi
     """
     Load pipeline configuration from YAML file.
 
+    TODO: I might add config validation with pydantic later.
+
     Args:
         config_name: Name of config file (e.g., "default-top5.yml")
 
     Returns:
         PipelineConfig: Typed configuration object
+
+    Raises:
+        FileNotFoundError: If config file doesn't exist
+        KeyError: If required config keys are missing
+        TypeError: If config values have wrong types
     """
     config_path = Path("configs") / config_name
 
@@ -72,13 +78,22 @@ def load_pipeline_config(config_name: str = "default-top5.yml") -> PipelineConfi
     with open(config_path, "r") as f:
         config_dict = yaml.safe_load(f)
 
-    # Build typed config from dict
-    return PipelineConfig(
-        data=DataConfig(**config_dict["data"]),
-        cross_validation=CVConfig(**config_dict["cross_validation"]),
-        stage1=Stage1Config(**config_dict["stage1"]),
-        stage2=Stage2Config(**config_dict["stage2"]),
-    )
+    # Validate required sections exist
+    required_sections = ["data", "cross_validation", "stage1", "stage2"]
+    missing = [s for s in required_sections if s not in config_dict]
+    if missing:
+        raise KeyError(f"Missing required config sections: {missing}")
+
+    # Build typed config from dict (will raise TypeError if keys missing)
+    try:
+        return PipelineConfig(
+            data=DataConfig(**config_dict["data"]),
+            cross_validation=CVConfig(**config_dict["cross_validation"]),
+            stage1=Stage1Config(**config_dict["stage1"]),
+            stage2=Stage2Config(**config_dict["stage2"]),
+        )
+    except TypeError as e:
+        raise TypeError(f"Invalid config structure: {e}") from e
 
 
 def load_class_config(class_set: str = "all"):
@@ -103,3 +118,45 @@ def load_class_config(class_set: str = "all"):
         raise ValueError(
             f"Invalid class_set '{class_set}'. Available options: {available}"
         )
+
+
+def load_model_config(stage_number: int, model_name: str) -> dict:
+    """
+    Load model-specific hyperparameters from YAML file.
+
+    Args:
+        stage_number: Stage number (1 or 2)
+        model_name: Model name (e.g., "isolation_forest", "kmeans")
+
+    Returns:
+        dict: Hyperparameters for the specified model
+
+    Raises:
+        FileNotFoundError: If hyperparameters.yml doesn't exist
+        ValueError: If model_name not found in config
+    """
+    # Path based on stage number
+    config_file = (
+        Path(__file__).parent.parent
+        / "models"
+        / f"stage_{stage_number}"
+        / "hyperparameters.yml"
+    )
+
+    if not config_file.exists():
+        raise FileNotFoundError(
+            f"Hyperparameters file not found: {config_file}\n"
+            f"Expected structure: configs/stage_{stage_number}/hyperparameters.yml"
+        )
+
+    with open(config_file, "r") as f:
+        all_hyperparams = yaml.safe_load(f)
+
+    if model_name not in all_hyperparams:
+        available = list(all_hyperparams.keys())
+        raise ValueError(
+            f"Model '{model_name}' not found in stage {stage_number} config.\n"
+            f"Available models: {available}"
+        )
+
+    return all_hyperparams[model_name]

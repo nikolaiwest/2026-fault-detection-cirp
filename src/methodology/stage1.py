@@ -1,13 +1,15 @@
 """Stage 1: Over-sensitive anomaly detection."""
 
 from numpy.typing import NDArray
-from pyod.models.iforest import IForest
 from sklearn.metrics import confusion_matrix
+
+from src.models.stage_1 import STAGE1_MODELS
 
 
 def run_stage1(
     x_values: NDArray,
     y_true: NDArray,
+    model_name: str,
     contamination: float,
     random_state: int,
 ) -> tuple[NDArray, NDArray]:
@@ -33,13 +35,20 @@ def run_stage1(
     print("STAGE 1: ANOMALY DETECTION")
     print("=" * 70)
 
+    # Get model from registry
+    if model_name not in STAGE1_MODELS:
+        available = list(STAGE1_MODELS.keys())
+        raise ValueError(f"Unknown model '{model_name}'. Available: {available}")
+
+    ModelClass = STAGE1_MODELS[model_name]
+    model = ModelClass(contamination=contamination, random_state=random_state)
+
     # Train anomaly detector (unsupervised - does not use y_true)
-    model = IForest(contamination=contamination, random_state=random_state)
     model.fit(x_values)
 
     # Get predictions
-    y_anomalies = model.predict(x_values)  # 0=OK, 1=NOK
-    anomaly_scores = model.decision_scores_
+    y_anomalies = model.predict(x_values)
+    anomaly_scores = model.decision_function(x_values)
 
     # Report results
     n_ok = (y_anomalies == 0).sum()
