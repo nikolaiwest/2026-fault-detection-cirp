@@ -6,7 +6,7 @@ def load_class_config(class_set: str = "all"):
     """Load fault class configuration from TOML file.
 
     Args:
-        class_set (str): The class set to load (e.g., 'all', 'top3', 'top5', 'top10').
+        class_set (str): The class set to load (e.g., 'all', 'top5', 'top10').
 
     Returns:
         list: List of class names from the specified class set.

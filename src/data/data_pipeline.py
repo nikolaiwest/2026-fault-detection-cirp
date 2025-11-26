@@ -26,6 +26,12 @@ def run_data_pipeline(
         keep_exceptions: If True, keep measurement exceptions (default: remove)
         classes_to_keep: List of class names to keep (uses "all" if set to None)
         target_ok_ratio: Target ratio of OK samples (0.99 = 99% OK, 1% faults)
+
+    Returns:
+        tuple: (x_values, y_values, label_mapping)
+            - x_values: numpy array of torque measurements
+            - y_values: numpy array of encoded labels
+            - label_mapping: dict mapping class names to integer labels
     """
 
     if classes_to_keep is None:
@@ -54,7 +60,8 @@ def run_data_pipeline(
     # Step 7: Use ints to represent the class values (originally str)
     data = encode_labels(data)
 
-    print("Pipeline complete!")
+    # Step 8: Unpack and convert to numpy arrays
+    data = unpack_and_convert(data)
     return data
 
 
@@ -328,3 +335,21 @@ def encode_labels(data: Dict) -> Dict:
         "labels": encoded_labels,
         "label_mapping": label_to_int,
     }
+
+
+def unpack_and_convert(data: Dict) -> tuple[np.ndarray, np.ndarray, Dict[str, int]]:
+    """
+    Unpack pipeline output dict into convenient tuple format.
+
+    Args:
+        data: Output from encode_labels()
+
+    Returns:
+        tuple: (x_values, y_values, label_mapping)
+    """
+    x_values = np.array(data["torque_values"])
+    y_values = np.array(data["labels"])
+    label_mapping = data["label_mapping"]
+
+    print("Pipeline complete!")
+    return x_values, y_values, label_mapping
