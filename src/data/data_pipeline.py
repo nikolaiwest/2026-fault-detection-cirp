@@ -5,7 +5,6 @@ from typing import Dict, List
 
 import numpy as np
 import pyscrew
-from imblearn.over_sampling import SMOTE
 
 from .config_loader import load_class_config
 
@@ -16,7 +15,6 @@ def run_data_pipeline(
     force_reload: bool = False,
     keep_exceptions: bool = False,
     classes_to_keep: list[str] | None = None,
-    target_ok_ratio: float = 0.99,
 ) -> tuple[np.ndarray, np.ndarray, Dict[str, int]]:
     """
     Main interface to execute the complete data preprocessing pipeline.
@@ -25,7 +23,6 @@ def run_data_pipeline(
         force_reload: Reload from PyScrew (will ignore the cache)
         keep_exceptions: If True, keep measurement exceptions (default: remove)
         classes_to_keep: List of class names to keep (uses "all" if set to None)
-        target_ok_ratio: Target ratio of OK samples (0.99 = 99% OK, 1% faults)
 
     Returns:
         tuple: (x_values, y_values, label_mapping)
@@ -54,13 +51,10 @@ def run_data_pipeline(
     # Step 5: Extract torque as only measurements (others are not needed)
     data = _keep_only_torque(data)
 
-    # Step 6: Upsample normal observations (to achieve a target OK ratio)
-    data = _upsample_normal_runs(data, target_ok_ratio)
-
-    # Step 7: Use ints to represent the class values (originally str)
+    # Step 6: Use ints to represent the class values (originally str)
     data = _encode_labels(data)
 
-    # Step 8: Unpack and convert to numpy arrays
+    # Step 7: Unpack and convert to numpy arrays
     data = _unpack_and_convert(data)
     return data
 
@@ -226,59 +220,6 @@ def _keep_only_torque(data: Dict) -> Dict:
         "torque_values": data["torque_values"],
         "class_values": data["class_values"],
     }
-
-
-def _upsample_normal_runs(data: Dict, ratio: float) -> Dict:
-    """
-    SMOTE upsampling of OK class to achieve target ratio.
-
-    Upsampling the normal class aims to create more natural imbalances in the screw
-    data. Synthetic samples are labeled as '001_artificial_ok' for transparency.
-    """
-
-    # Identify normal samples
-    normal_label = "000_normal-observations"  # default value for OK in PyScrew "s04"
-    class_values = data["class_values"]
-
-    n_total = len(class_values)
-    n_normal = sum(1 for c in class_values if c == normal_label)
-    n_faults = n_total - n_normal
-
-    # Calculate how many normal samples are needed
-    # ratio = n_normal_target / (n_normal_target + n_faults)
-    n_normal_target = int((ratio * n_faults) / (1 - ratio))
-    n_synthetic = n_normal_target - n_normal
-
-    if n_synthetic <= 0:
-        print(f"- Already have {n_normal} ok samples (ratio: {n_normal/n_total:.2%})")
-        print(f"- No upsampling needed for target ratio {ratio:.2%}")
-        return data
-
-    print(f"- Current: {n_normal} OK, {n_faults} NOK (ratio: {n_normal/n_total:.2%})")
-    print(f"- Target ratio: {ratio:.2%} → need {n_normal_target} normal samples")
-    print(f"- Generating {n_synthetic} synthetic samples with SMOTE...")
-
-    # Prepare data for SMOTE
-    torque_array = np.array(data["torque_values"])
-    labels_binary = [1 if c == normal_label else 0 for c in class_values]
-
-    # Apply SMOTE
-    smote = SMOTE(sampling_strategy={1: n_normal_target}, random_state=42)
-    torque_resampled, _ = smote.fit_resample(torque_array, labels_binary)
-
-    # Split back into original + synthetic
-    torque_synthetic = torque_resampled[n_total:]
-
-    # Create labels for synthetic samples
-    labels_synthetic = ["001_artificial_ok"] * n_synthetic
-
-    # Append to original data
-    data["torque_values"] = data["torque_values"] + torque_synthetic.tolist()
-    data["class_values"] = data["class_values"] + labels_synthetic
-
-    print(f"- Added {n_synthetic} synth. samples, total: {len(data['class_values'])}")
-
-    return data
 
 
 def _encode_labels(data: Dict) -> Dict:
