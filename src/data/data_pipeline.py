@@ -27,6 +27,7 @@ def run_data_pipeline(
     force_reload: bool = False,
     keep_exceptions: bool = False,
     classes_to_keep: list[str] | None = None,
+    paa_segments: int | None = None,
 ) -> tuple[np.ndarray, np.ndarray, Dict[str, int]]:
     """
     Main interface to execute the complete data preprocessing pipeline.
@@ -69,10 +70,11 @@ def run_data_pipeline(
     # Step 6: Use ints to represent the class values (originally str)
     data = _encode_labels(data)
 
-    # Step 7: Unpack and convert to numpy arrays
-    data = _unpack_and_convert(data)
+    # Step 7:  Apply PAA
+    data = _apply_paa(data, paa_segments)
 
-    logger.info("Data pipeline complete")
+    # Step 8: Unpack and convert to numpy arrays
+    data = _unpack_and_convert(data)
 
     return data
 
@@ -365,6 +367,56 @@ def _encode_labels(data: Dict) -> Dict:
         "labels": encoded_labels,
         "label_mapping": label_to_int,
     }
+
+
+def _apply_paa(data: Dict, n_segments: int) -> Dict:
+    """
+    Apply Piecewise Aggregate Approximation (PAA) to torque values.
+
+    Args:
+        data: Dictionary containing 'torque_values'
+        n_segments: Number of segments for PAA compression
+
+    Returns:
+        dict: Updated data dictionary with PAA-compressed torque_values
+    """
+    if n_segments is None:
+        logger.warning("Received n_segments=None, skipping PAA step")
+        return data
+
+    X = np.array(data["torque_values"])
+    n_samples, n_timepoints = X.shape
+
+    # Case 1: impossible configuration
+    if n_segments > n_timepoints:
+        logger.error(
+            f"PAA failed: n_segments ({n_segments}) > n_timepoints ({n_timepoints})"
+        )
+        raise ValueError(
+            f"PAA requires n_segments <= n_timepoints, but got {n_segments} > {n_timepoints}"
+        )
+
+    # Case 2: same length → no PAA needed
+    if n_segments == n_timepoints:
+        logger.info(
+            f"PAA skipped: n_segments equals current length ({n_timepoints}), data unchanged"
+        )
+        return data
+
+    # Case 3: apply PAA normally
+    segment_size = n_timepoints // n_segments
+    cutoff = segment_size * n_segments
+
+    logger.info(
+        f"Applying PAA: {n_timepoints} → {n_segments} (segment size={segment_size})"
+    )
+    logger.debug(f"PAA cutoff: using first {cutoff} of {n_timepoints} values")
+
+    X_reshaped = X[:, :cutoff].reshape(n_samples, n_segments, segment_size)
+    X_paa = X_reshaped.mean(axis=2)
+
+    data["torque_values"] = X_paa.tolist()
+    return data
 
 
 def _unpack_and_convert(data: Dict) -> tuple[np.ndarray, np.ndarray, Dict[str, int]]:
