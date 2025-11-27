@@ -1,6 +1,7 @@
 # Project-specific data directories
 data/processed/
 data/pyscrew/
+results/
 
 # Large binary files
 *.pkl

@@ -1,8 +1,21 @@
+"""
+Configuration loading utilities for the pipeline.
+
+Provides functions to load and validate configuration from YAML and TOML files:
+- Pipeline configuration (YAML)
+- Fault class sets (TOML)
+- Model hyperparameters (YAML)
+"""
+
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
 import yaml
+
+from src.utils.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -72,7 +85,10 @@ def load_pipeline_config(config_name: str = "default-top5.yml") -> PipelineConfi
     """
     config_path = Path("configs") / config_name
 
+    logger.debug(f"Loading pipeline config from: {config_path}")
+
     if not config_path.exists():
+        logger.error(f"Config file not found: {config_path}")
         raise FileNotFoundError(f"Config file not found: {config_path}")
 
     with open(config_path, "r") as f:
@@ -82,39 +98,54 @@ def load_pipeline_config(config_name: str = "default-top5.yml") -> PipelineConfi
     required_sections = ["data", "cross_validation", "stage1", "stage2"]
     missing = [s for s in required_sections if s not in config_dict]
     if missing:
+        logger.error(f"Missing required config sections: {missing}")
         raise KeyError(f"Missing required config sections: {missing}")
 
     # Build typed config from dict (will raise TypeError if keys missing)
     try:
-        return PipelineConfig(
+        config = PipelineConfig(
             data=DataConfig(**config_dict["data"]),
             cross_validation=CVConfig(**config_dict["cross_validation"]),
             stage1=Stage1Config(**config_dict["stage1"]),
             stage2=Stage2Config(**config_dict["stage2"]),
         )
+        logger.debug(f"Successfully loaded config: {config_name}")
+        return config
+
     except TypeError as e:
+        logger.error(f"Invalid config structure: {e}")
         raise TypeError(f"Invalid config structure: {e}") from e
 
 
 def load_class_config(class_set: str = "all"):
-    """Load fault class configuration from TOML file.
+    """
+    Load fault class configuration from TOML file.
 
     Args:
-        class_set (str): The class set to load (e.g., 'all', 'top5', 'top10').
+        class_set: The class set to load (e.g., 'all', 'top5', 'top10')
 
     Returns:
-        list: List of class names from the specified class set.
+        list: List of class names from the specified class set
+
+    Raises:
+        ValueError: If class_set not found in configuration
     """
     # Path from project root
     config_file = Path(__file__).parent.parent.parent / "configs" / "fault_classes.toml"
+
+    logger.debug(f"Loading class config '{class_set}' from: {config_file}")
 
     with open(config_file, "rb") as f:
         config = tomllib.load(f)
 
     try:
-        return config["class_sets"][class_set]
+        classes = config["class_sets"][class_set]
+        logger.debug(f"Loaded {len(classes)} classes from set '{class_set}'")
+        return classes
+
     except KeyError:
         available = list(config["class_sets"].keys())
+        logger.error(f"Invalid class_set '{class_set}'. Available: {available}")
         raise ValueError(
             f"Invalid class_set '{class_set}'. Available options: {available}"
         )
@@ -143,7 +174,12 @@ def load_model_config(stage_number: int, model_name: str) -> dict:
         / "hyperparameters.yml"
     )
 
+    logger.debug(
+        f"Loading hyperparameters for stage {stage_number}, model '{model_name}'"
+    )
+
     if not config_file.exists():
+        logger.error(f"Hyperparameters file not found: {config_file}")
         raise FileNotFoundError(
             f"Hyperparameters file not found: {config_file}\n"
             f"Expected structure: configs/stage_{stage_number}/hyperparameters.yml"
@@ -154,9 +190,14 @@ def load_model_config(stage_number: int, model_name: str) -> dict:
 
     if model_name not in all_hyperparams:
         available = list(all_hyperparams.keys())
+        logger.error(
+            f"Model '{model_name}' not found in stage {stage_number} config. Available: {available}"
+        )
         raise ValueError(
             f"Model '{model_name}' not found in stage {stage_number} config.\n"
             f"Available models: {available}"
         )
 
-    return all_hyperparams[model_name]
+    hyperparams = all_hyperparams[model_name]
+    logger.debug(f"Loaded hyperparameters for '{model_name}': {hyperparams}")
+    return hyperparams

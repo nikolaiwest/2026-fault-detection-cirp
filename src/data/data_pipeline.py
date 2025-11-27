@@ -1,3 +1,11 @@
+"""
+Data preprocessing pipeline for screw driving quality control.
+
+Handles loading, filtering, and preprocessing of screw driving measurements
+from the PyScrew dataset. Transforms raw data into ML-ready format with
+encoded labels and extracted torque features.
+"""
+
 import json
 import pickle
 from pathlib import Path
@@ -6,7 +14,11 @@ from typing import Dict, List
 import numpy as np
 import pyscrew
 
+from src.utils.logger import get_logger
+
 from .config_loader import load_class_config
+
+logger = get_logger(__name__)
 
 NORMAL_CLASS_VALUE = "000_normal-observations"
 
@@ -34,7 +46,10 @@ def run_data_pipeline(
     if classes_to_keep is None:
         classes_to_keep = load_class_config("all")
 
-    print("Starting pipeline...")
+    logger.info("Starting data pipeline")
+    logger.debug(
+        f"Parameters: force_reload={force_reload}, keep_exceptions={keep_exceptions}, n_classes={len(classes_to_keep)}"
+    )
 
     # Step 1: Load s04 data from PyScrew (hosted public on Zenodo)
     data = _load_data(force_reload)
@@ -56,25 +71,38 @@ def run_data_pipeline(
 
     # Step 7: Unpack and convert to numpy arrays
     data = _unpack_and_convert(data)
+
+    logger.info("Data pipeline complete")
+
     return data
 
 
 def _load_data(force_reload=False):
-    """Load and cache preprocessed screw driving data."""
+    """
+    Load and cache preprocessed screw driving data.
+
+    Args:
+        force_reload: If True, download fresh data from PyScrew
+
+    Returns:
+        dict: PyScrew data dictionary with torque and metadata
+    """
     # Define cache path
     cache_file = Path("data/processed/pyscrew_s04.pkl")
     cache_file.parent.mkdir(parents=True, exist_ok=True)
 
     # Check if cache exists and should be used
     if cache_file.exists() and not force_reload:
-        print(f"Loading cached data from {cache_file}")
+        logger.info(f"Loading cached data from {cache_file}")
         with open(cache_file, "rb") as f:
             data = pickle.load(f)
-        print(f"Loaded {len(data['torque_values'])} samples from cache")
+        logger.info(f"Loaded {len(data['torque_values'])} samples from cache")
         return data
 
     # Load fresh data from pyscrew
-    print("Loading data from pyscrew (this may take a few minutes)...")
+    logger.info("Loading data from PyScrew (this may take a few minutes)")
+    logger.debug("Downloading from Zenodo repository")
+
     data = pyscrew.get_data(
         scenario="s04",
         screw_positions="left",
@@ -86,11 +114,11 @@ def _load_data(force_reload=False):
     )
 
     # Save to cache
-    print(f"Saving to cache: {cache_file}")
+    logger.info(f"Caching data to {cache_file}")
     with open(cache_file, "wb") as f:
         pickle.dump(data, f)
 
-    print(f"Loaded and cached {len(data['torque_values'])} samples")
+    logger.info(f"Loaded and cached {len(data['torque_values'])} samples")
     return data
 
 
@@ -100,10 +128,17 @@ def _remove_exceptions(data: Dict, keep: bool = False) -> Dict:
 
     Measurement exceptions are indicated by 'scenario_exception' == 1.
     These are recording issues, not actual process faults.
+
+    Args:
+        data: PyScrew data dictionary
+        keep: If True, keep exception samples
+
+    Returns:
+        dict: Filtered data dictionary
     """
 
     if keep:
-        print("Keeping all samples (including exceptions)")
+        logger.info("Keeping all samples (including exceptions)")
         return data
 
     # Get exception mask (True = keep, False = remove)
@@ -114,7 +149,10 @@ def _remove_exceptions(data: Dict, keep: bool = False) -> Dict:
     n_exceptions = sum(1 for exc in exceptions if exc == 1)
     n_keep = sum(keep_mask)
 
-    print(f"- Found {n_exceptions} exceptions in {n_total} samples, keeping {n_keep}")
+    logger.info(
+        f"Found {n_exceptions} exceptions in {n_total} samples, keeping {n_keep}"
+    )
+    logger.debug(f"Exception removal rate: {n_exceptions/n_total:.1%}")
 
     # Use the mask to filter all dict fields
     filtered_data = {}
@@ -124,12 +162,16 @@ def _remove_exceptions(data: Dict, keep: bool = False) -> Dict:
             filtered_data[key] = [v for v, keep in zip(values, keep_mask) if keep]
         elif isinstance(values, (list, tuple)):
             # Different length found, something is wrong with the raw data
+            logger.error(
+                f"Field '{key}' has unexpected length {len(values)} (expected {n_total})"
+            )
             raise ValueError(
                 f"Field '{key}' has unexpected length {len(values)} "
                 f"(expected {n_total}). Data structure inconsistent!"
             )
         else:
             # Not a list, this should not happen in pyscrew data
+            logger.error(f"Field '{key}' has unexpected type {type(values).__name__}")
             raise TypeError(
                 f"Field '{key}' is type {type(values).__name__}, expected list. "
                 f"Data structure unexpected!"
@@ -140,12 +182,20 @@ def _remove_exceptions(data: Dict, keep: bool = False) -> Dict:
 
 def _create_ok_class(data: Dict) -> Dict:
     """
-    Create '000_normal-observations' class from all normal samples. Overwrites class_values
-    with '000_normal-observations' where scenario_condition == 'normal'.
+    Create '000_normal-observations' class from all normal samples.
 
-    Originally, normal and faulty data was recorded alternately to prevent temporal factors
-    from influencing the observations. To obtain a pure OK class, normal observations must
-    therefore be sorted into their own class.
+    Overwrites class_values with '000_normal-observations' where
+    scenario_condition == 'normal'.
+
+    Originally, normal and faulty data was recorded alternately to prevent temporal
+    factors from influencing the observations. To obtain a pure OK class, normal
+    observations must therefore be sorted into their own class.
+
+    Args:
+        data: PyScrew data dictionary
+
+    Returns:
+        dict: Data with separated normal class
     """
 
     scenario_conditions = data["scenario_condition"]
@@ -162,7 +212,8 @@ def _create_ok_class(data: Dict) -> Dict:
     n_ok = sum(1 for c in new_class_values if c == NORMAL_CLASS_VALUE)
     n_faults = len(new_class_values) - n_ok
 
-    print(f"- Separated '000_normal-observations': {n_ok} normal, {n_faults} faults")
+    logger.info(f"Separated normal class: {n_ok} OK samples, {n_faults} fault samples")
+    logger.debug(f"OK ratio: {n_ok/len(new_class_values):.1%}")
 
     data["class_values"] = new_class_values
     return data
@@ -171,15 +222,23 @@ def _create_ok_class(data: Dict) -> Dict:
 def _filter_classes(data: Dict, classes: List[str]) -> Dict:
     """
     Keep only the selected fault classes by simple filtering.
+
     The classes used in the list were selected based on their origin (one per each
     group of error causes) and their general sense of uniqueness.
+
+    Args:
+        data: PyScrew data dictionary
+        classes: List of fault class names to keep
+
+    Returns:
+        dict: Filtered data with selected classes only
     """
 
     # Always include normal class
     classes_with_normal = classes + [NORMAL_CLASS_VALUE]
 
     if not classes_with_normal:
-        print("- No classes specified, keeping all samples")
+        logger.warning("No classes specified, keeping all samples")
         return data
 
     # Get class mask (True = keep, False = remove)
@@ -190,7 +249,12 @@ def _filter_classes(data: Dict, classes: List[str]) -> Dict:
     n_keep = sum(keep_mask)
     n_remove = n_total - n_keep
 
-    print(f"- Filter to {len(classes)} classes, removing {n_remove}, keeping {n_keep}")
+    logger.info(
+        f"Filtering to {len(classes)} fault classes: removing {n_remove}, keeping {n_keep}"
+    )
+    logger.debug(
+        f"Selected classes: {', '.join(classes[:3])}{'...' if len(classes) > 3 else ''}"
+    )
 
     # Use the mask to filter all dict fields
     filtered_data = {}
@@ -198,11 +262,15 @@ def _filter_classes(data: Dict, classes: List[str]) -> Dict:
         if isinstance(values, (list, tuple)) and len(values) == n_total:
             filtered_data[key] = [v for v, keep in zip(values, keep_mask) if keep]
         elif isinstance(values, (list, tuple)):
+            logger.error(
+                f"Field '{key}' has unexpected length {len(values)} (expected {n_total})"
+            )
             raise ValueError(
                 f"Field '{key}' has unexpected length {len(values)} "
                 f"(expected {n_total}). Data structure inconsistent!"
             )
         else:
+            logger.error(f"Field '{key}' has unexpected type {type(values).__name__}")
             raise TypeError(
                 f"Field '{key}' is type {type(values).__name__}, expected list. "
                 f"Data structure unexpected!"
@@ -212,9 +280,23 @@ def _filter_classes(data: Dict, classes: List[str]) -> Dict:
 
 
 def _keep_only_torque(data: Dict) -> Dict:
-    """Extract torque only labels, by dropping all other measurements."""
+    """
+    Extract torque and labels only, dropping all other measurements.
 
-    print(f"- Keeping only torque and classes, dropping {len(data) - 2} fields")
+    Args:
+        data: PyScrew data dictionary
+
+    Returns:
+        dict: Reduced data with torque and class values only
+    """
+
+    n_dropped = len(data) - 2
+    logger.info(
+        f"Keeping only torque and class labels, dropping {n_dropped} metadata fields"
+    )
+    logger.debug(
+        f"Dropped fields: {', '.join([k for k in data.keys() if k not in ['torque_values', 'class_values']][:5])}"
+    )
 
     return {
         "torque_values": data["torque_values"],
@@ -228,6 +310,12 @@ def _encode_labels(data: Dict) -> Dict:
 
     Normal class ('000_normal-observations' or '001_artificial_ok') always gets label 0.
     Saves label mapping to JSON for later reference.
+
+    Args:
+        data: Data dictionary with string class labels
+
+    Returns:
+        dict: Data with integer-encoded labels and mapping
     """
 
     class_values = data["class_values"]
@@ -264,10 +352,13 @@ def _encode_labels(data: Dict) -> Dict:
     n_normal = sum(1 for lbl in encoded_labels if lbl == 0)
     n_faults = len(encoded_labels) - n_normal
 
-    print(
-        f"- Encoded {len(label_to_int)} classes: {n_normal} normal (0), {n_faults} faults (1-{fault_idx-1})"
+    logger.info(
+        f"Encoded {len(label_to_int)} classes: {n_normal} normal (0), {n_faults} faults (1-{fault_idx-1})"
     )
-    print(f"- Saved mapping to {mapping_file}")
+    logger.info(f"Saved label mapping to {mapping_file}")
+    logger.debug(
+        f"Label distribution: {dict(sorted([(v, class_values.count(k)) for k, v in label_to_int.items()]))}"
+    )
 
     return {
         "torque_values": data["torque_values"],
@@ -290,5 +381,6 @@ def _unpack_and_convert(data: Dict) -> tuple[np.ndarray, np.ndarray, Dict[str, i
     y_values = np.array(data["labels"])
     label_mapping = data["label_mapping"]
 
-    print("Pipeline complete!")
+    logger.debug(f"Final shapes: X={x_values.shape}, y={y_values.shape}")
+
     return x_values, y_values, label_mapping
