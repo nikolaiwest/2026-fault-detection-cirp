@@ -49,6 +49,7 @@ def run_two_stage_pipeline(config_name: str = "default-top5.yml"):
         force_reload=config.data.force_reload,
         keep_exceptions=config.data.keep_exceptions,
         classes_to_keep=load_class_config(config.data.classes_to_keep),
+        paa_segments=config.data.paa_segments,
     )
 
     # Prepare cross-validation folds
@@ -86,15 +87,17 @@ def run_two_stage_pipeline(config_name: str = "default-top5.yml"):
 
         # Stage 2: Fault clustering
         logger.info(
-            f"Running Stage 2: Clustering (n_clusters={config.stage2.n_clusters}, DTW={config.stage2.use_dtw})"
+            f"Running Stage 2: {config.stage2.model_name} "
+            f"(metric={config.stage2.metric}, n_clusters={config.stage2.n_clusters})"
         )
         y_clusters = run_stage2(
             x_values=x_fold,
             y_anomalies=y_anomalies,
             y_true=y_fold,
             label_mapping=label_mapping,
+            model_name=config.stage2.model_name,
             ok_reference_ratio=config.stage2.ok_reference_ratio,
-            use_dtw=config.stage2.use_dtw,
+            metric=config.stage2.metric,
             n_clusters=config.stage2.n_clusters,
             random_state=config.stage2.random_state,
         )

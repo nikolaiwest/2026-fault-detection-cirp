@@ -7,8 +7,8 @@ to identify fault-pure clusters and filter false positives.
 
 import numpy as np
 from numpy.typing import NDArray
-from sklearn.cluster import KMeans
 
+from src.models.stage_2 import STAGE2_MODELS
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -19,8 +19,9 @@ def run_stage2(
     y_anomalies: NDArray,
     y_true: NDArray,
     label_mapping: dict,
+    model_name: str,
     ok_reference_ratio: float,
-    use_dtw: bool,
+    metric: str,
     n_clusters: int,
     random_state: int,
 ) -> NDArray:
@@ -37,18 +38,46 @@ def run_stage2(
         y_anomalies: Stage 1 predictions (0=OK, 1=NOK)
         y_true: Ground truth for analysis (not used for clustering)
         label_mapping: Fault class names (for future use)
-        ok_reference_ratio: Ratio of OK samples to include (e.g., 0.01 = 1%)
-        use_dtw: Use Dynamic Time Warping distance (requires sktime)
+        model_name: Name of clustering model to use (from STAGE2_MODELS)
+        ok_reference_ratio: Ratio of OK samples to include (e.g., 0.10 = 10%)
+        metric: Distance metric ('euclidean', 'dtw', 'msm', etc.)
         n_clusters: Number of clusters to find
         random_state: Random seed for reproducibility
 
     Returns:
         y_clusters: Cluster assignments for samples sent to Stage 2
+
+    Raises:
+        ValueError: If model_name not found in STAGE2_MODELS registry
+        ImportError: If required library (sktime/sklearn) not installed
     """
     logger.subsection("Stage 2: Fault Clustering")
-    logger.info(f"Clustering strategy: {n_clusters} clusters, DTW={use_dtw}")
+    logger.info(f"Model: {model_name}")
+    logger.info(f"Distance metric: {metric}")
+    logger.info(f"Number of clusters: {n_clusters}")
     logger.info(f"OK reference ratio: {ok_reference_ratio:.1%}")
     logger.debug(f"Random state: {random_state}")
+
+    # Get model from registry
+    if model_name not in STAGE2_MODELS:
+        available = list(STAGE2_MODELS.keys())
+        logger.error(f"Unknown model '{model_name}'. Available models: {available}")
+        raise ValueError(f"Unknown model '{model_name}'. Available: {available}")
+
+    ModelClass = STAGE2_MODELS[model_name]
+    logger.debug(f"Instantiating {ModelClass.__name__}")
+
+    # Instantiate model
+    model = ModelClass(n_clusters=n_clusters, random_state=random_state, metric=metric)
+
+    logger.info(f"Using {model.name}")
+    logger.debug(f"Supported metrics: {model.supported_metrics}")
+
+    if metric not in model.supported_metrics:
+        logger.warning(
+            f"Metric '{metric}' may not be supported by {model.name}. "
+            f"Model will use fallback: '{model.metric}'"
+        )
 
     # 1. Prepare: Select NOK samples + OK reference
     nok_indices = np.where(y_anomalies == 1)[0]
@@ -58,6 +87,13 @@ def run_stage2(
 
     # Sample OK reference
     n_ok_sample = int(len(ok_indices) * ok_reference_ratio)
+
+    if n_ok_sample == 0:
+        logger.warning(
+            f"OK reference ratio {ok_reference_ratio:.1%} results in 0 samples. Using at least 1."
+        )
+        n_ok_sample = min(1, len(ok_indices))
+
     np.random.seed(random_state)  # Ensure reproducibility
     ok_sample_indices = np.random.choice(ok_indices, size=n_ok_sample, replace=False)
 
@@ -79,23 +115,16 @@ def run_stage2(
     )
 
     # 2. Run clustering
-    if use_dtw:
-        try:
-            from sktime.clustering.k_means import TimeSeriesKMeans
-
-            logger.info("Using TimeSeriesKMeans with DTW distance metric")
-            model = TimeSeriesKMeans(
-                n_clusters=n_clusters, metric="dtw", random_state=random_state
-            )
-        except ImportError:
-            logger.warning("sktime not available, falling back to standard KMeans")
-            model = KMeans(n_clusters=n_clusters, random_state=random_state)
-    else:
-        logger.info("Using standard KMeans with Euclidean distance")
-        model = KMeans(n_clusters=n_clusters, random_state=random_state)
-
     logger.info("Fitting clustering model")
-    y_clusters = model.fit_predict(x_cluster)
+
+    try:
+        y_clusters = model.fit_predict(x_cluster)
+    except ImportError as e:
+        logger.error(f"Failed to import required library: {e}")
+        raise
+    except Exception as e:
+        logger.error(f"Clustering failed: {e}")
+        raise
 
     n_clusters_found = len(np.unique(y_clusters))
     logger.info(f"Clustering complete: {n_clusters_found} clusters formed")
@@ -103,6 +132,11 @@ def run_stage2(
     if n_clusters_found < n_clusters:
         logger.warning(
             f"Found fewer clusters ({n_clusters_found}) than requested ({n_clusters})"
+        )
+    elif n_clusters_found > n_clusters:
+        logger.warning(
+            f"Found more clusters ({n_clusters_found}) than requested ({n_clusters}). "
+            "This can happen with density-based methods (DBSCAN)."
         )
 
     # 3. Analyze cluster composition
@@ -121,9 +155,9 @@ def _analyze_clusters(
     Analyze and log cluster composition.
 
     Classifies each cluster as:
-    - Fault-pure: Real faults with low false positive contamination
-    - OK-dominated: Mostly OK reference samples (likely false positives)
-    - FP-dominated: Mostly false positives without OK reference
+    - Fault-pure: Real faults with low false positive contamination (<30% FP)
+    - OK-dominated: Mostly OK reference samples (>50% OK reference)
+    - FP-dominated: Mostly false positives (>70% FP among non-reference)
     - Mixed: Combination of the above
 
     Args:
