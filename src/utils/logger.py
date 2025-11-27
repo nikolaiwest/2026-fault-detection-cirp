@@ -162,6 +162,13 @@ def _configure_root_logger(console_level: int, file_level: int) -> None:
     # Remove any existing handlers (prevents duplicates)
     root_logger.handlers.clear()
 
+    # === Silence noisy third-party libraries ===
+    # These libraries spam DEBUG logs, set them to WARNING
+    logging.getLogger("numba").setLevel(logging.WARNING)
+    logging.getLogger("matplotlib").setLevel(logging.WARNING)
+    logging.getLogger("PIL").setLevel(logging.WARNING)
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+
     # === Console Handler (colorized) ===
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(console_level)
