@@ -15,7 +15,7 @@ logger = get_logger(__name__)
 
 def prepare_cv_folds(
     x_values: NDArray,
-    y_true: NDArray,
+    y_values: NDArray,
     n_splits: int,
     target_ok_per_fold: int | float | None,
     target_nok_per_fold: int | None,
@@ -32,7 +32,7 @@ def prepare_cv_folds(
 
     Args:
         x_values: Feature matrix (n_samples, n_features)
-        y_true: Ground truth labels (n_samples,)
+        y_values: Ground truth labels (n_samples,)
         n_splits: Number of CV folds
         target_ok_per_fold: OK upsampling strategy:
             - float (0-1): ratio (e.g., 0.99 = 99% OK samples)
@@ -55,9 +55,9 @@ def prepare_cv_folds(
     logger.debug(f"Random state: {random_state}")
 
     # Split OK vs NOK
-    ok_mask = y_true == 0
-    x_ok, y_ok = x_values[ok_mask], y_true[ok_mask]
-    x_nok, y_nok = x_values[~ok_mask], y_true[~ok_mask]
+    ok_mask = y_values == 0
+    x_ok, y_ok = x_values[ok_mask], y_values[ok_mask]
+    x_nok, y_nok = x_values[~ok_mask], y_values[~ok_mask]
 
     logger.info(f"Dataset split: {len(x_ok)} OK samples, {len(x_nok)} NOK samples")
     logger.debug(f"OK ratio: {len(x_ok)/len(x_values):.1%}")
@@ -176,7 +176,7 @@ def report_cv_results(results: list[dict]):
 
     Args:
         results: List of dicts containing per-fold results
-            Each dict contains: y_anomalies, anomaly_scores, y_clusters, y_true
+            Each dict contains: y_anomalies, anomaly_scores, y_clusters, y_values
     """
     logger.subsection("Cross-Validation Summary")
 

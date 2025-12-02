@@ -1,5 +1,6 @@
 """Stage 1 anomaly detection models."""
 
+from .base import Stage1Model
 from .auto_encoder import AutoEncoder
 from .ecod import ECOD
 from .hbos import HBOS

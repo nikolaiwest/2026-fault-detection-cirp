@@ -45,7 +45,7 @@ def run_two_stage_pipeline(config_name: str = "default-top5.yml"):
 
     # Load data
     logger.subsection("Data Loading")
-    x_values, y_true, label_mapping = run_data_pipeline(
+    x_values, y_values, label_mapping = run_data_pipeline(
         force_reload=config.data.force_reload,
         keep_exceptions=config.data.keep_exceptions,
         classes_to_keep=load_class_config(config.data.classes_to_keep),
@@ -56,7 +56,7 @@ def run_two_stage_pipeline(config_name: str = "default-top5.yml"):
     logger.subsection("Cross-Validation Setup")
     cv_folds = prepare_cv_folds(
         x_values=x_values,
-        y_true=y_true,
+        y_values=y_values,
         n_splits=config.cross_validation.n_splits,
         target_nok_per_fold=config.cross_validation.target_nok_per_fold,
         target_ok_per_fold=config.cross_validation.target_ok_per_fold,
@@ -78,7 +78,7 @@ def run_two_stage_pipeline(config_name: str = "default-top5.yml"):
         )
         y_anomalies, anomaly_scores = run_stage1(
             x_values=x_fold,
-            y_true=y_fold,
+            y_values=y_fold,
             model_name=config.stage1.model_name,
             contamination=config.stage1.contamination,
             random_state=config.stage1.random_state,
@@ -90,27 +90,29 @@ def run_two_stage_pipeline(config_name: str = "default-top5.yml"):
             f"Running Stage 2: {config.stage2.model_name} "
             f"(metric={config.stage2.metric}, n_clusters={config.stage2.n_clusters})"
         )
-        y_clusters = run_stage2(
+        stage2_predictions = run_stage2(
             x_values=x_fold,
             y_anomalies=y_anomalies,
             y_true=y_fold,
             label_mapping=label_mapping,
             model_name=config.stage2.model_name,
-            ok_reference_ratio=config.stage2.ok_reference_ratio,
+            target_ok_to_sample=config.stage2.target_ok_to_sample,
             metric=config.stage2.metric,
+            ok_reference_threshold=config.stage2.ok_reference_threshold,
             n_clusters=config.stage2.n_clusters,
             random_state=config.stage2.random_state,
         )
-        logger.info(f"Stage 2 complete: {len(set(y_clusters))} clusters formed")
+        logger.info(f"Stage 2 complete: {stage2_predictions.sum()} faults predicted")
 
         results.append(
             {
                 "y_anomalies": y_anomalies,
                 "anomaly_scores": anomaly_scores,
-                "y_clusters": y_clusters,
+                "stage2_predictions": stage2_predictions,
                 "y_true": y_fold,
             }
         )
+
         logger.debug(f"Fold {fold_num} results stored")
 
     # Report aggregated results

@@ -5,18 +5,15 @@ Includes both sktime (time-series aware) and sklearn (fast) models.
 Each model uses its default distance metric as specified in hyperparameters.yml.
 """
 
-# sktime models (time-series aware, support DTW/MSM/etc.)
+from .base import Stage2Model
+from .sklearn_agglomerative import AgglomerativeSklearn
+from .sklearn_birch import BirchSklearn
+from .sklearn_dbscan import DBSCANSklearn
+from .sklearn_kmeans import KMeansSklearn
+from .sktime_dbscan import TimeSeriesDBSCAN
 from .sktime_kmeans import TimeSeriesKMeansSktime
 from .sktime_kmedoids import TimeSeriesKMedoids
-from .sktime_dbscan import TimeSeriesDBSCAN
 from .sktime_kshapes import TimeSeriesKShapes
-
-# sklearn models (fast, Euclidean-focused)
-from .sklearn_kmeans import KMeansSklearn
-from .sklearn_dbscan import DBSCANSklearn
-from .sklearn_birch import BirchSklearn
-from .sklearn_agglomerative import AgglomerativeSklearn
-
 
 # Model registry for Stage 2
 # Use these names in your pipeline config (stage2.model_name)
