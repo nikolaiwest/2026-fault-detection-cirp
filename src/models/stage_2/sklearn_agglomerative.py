@@ -20,7 +20,7 @@ class AgglomerativeSklearn(Stage2Model):
         """Fit Agglomerative Clustering and return cluster assignments."""
         self.model = AgglomerativeClustering(
             n_clusters=self.n_clusters,
-            metric=self.metric if self.metric != "euclidean" else None,
+            metric=self.metric,
             **self.hyperparams,  # linkage, etc.
         )
 

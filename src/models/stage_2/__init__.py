@@ -26,7 +26,7 @@ STAGE2_MODELS = {
     # sklearn models (fast alternatives, Euclidean only)
     "sklearn_kmeans": KMeansSklearn,  # Standard KMeans (fast, Euclidean)
     "sklearn_dbscan": DBSCANSklearn,  # Standard DBSCAN (fast, Euclidean)
-    "sklearnbirch": BirchSklearn,  # BIRCH (hierarchical, memory-efficient)
+    "sklearn_birch": BirchSklearn,  # BIRCH (hierarchical, memory-efficient)
     "sklearn_agglomerative": AgglomerativeSklearn,  # Agglomerative (hierarchical)
 }
 

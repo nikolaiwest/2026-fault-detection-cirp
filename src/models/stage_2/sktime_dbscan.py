@@ -8,7 +8,7 @@ from .base import Stage2Model
 class TimeSeriesDBSCAN(Stage2Model):
     """Time Series DBSCAN from sktime (density-based clustering)."""
 
-    model_name = "dbscan_sktime"
+    model_name = "sktime_dbscan"
 
     def __init__(self, n_clusters: int, random_state: int, metric: str = "euclidean"):
         """

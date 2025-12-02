@@ -8,7 +8,7 @@ from .base import Stage2Model
 class TimeSeriesKShapes(Stage2Model):
     """Time Series K-Shapes from sktime (shape-based clustering)."""
 
-    model_name = "kshapes_sktime"
+    model_name = "sktime_kshapes"
 
     @property
     def supported_metrics(self) -> list[str]:

@@ -8,7 +8,7 @@ from .base import Stage2Model
 class TimeSeriesKMedoids(Stage2Model):
     """Time Series K-Medoids from sktime."""
 
-    model_name = "kmedoids_sktime"
+    model_name = "sktime_kmedoids"
 
     @property
     def supported_metrics(self) -> list[str]:
@@ -26,7 +26,7 @@ class TimeSeriesKMedoids(Stage2Model):
 
         self.model = SKTimeKMedoids(
             n_clusters=self.n_clusters,
-            distance=self.metric,
+            metric=self.metric,
             random_state=self.random_state,
             **self.hyperparams,
         )
