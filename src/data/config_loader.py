@@ -10,6 +10,7 @@ Provides functions to load and validate configuration from YAML and TOML files:
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional, Union
 
 import yaml
 
@@ -22,9 +23,10 @@ logger = get_logger(__name__)
 class DataConfig:
     """Data pipeline configuration."""
 
-    classes_to_keep: str
     force_reload: bool
     keep_exceptions: bool
+    classes_to_keep: str
+    paa_segments: int
 
 
 @dataclass
@@ -32,8 +34,8 @@ class CVConfig:
     """Cross-validation configuration."""
 
     n_splits: int
-    target_nok_per_fold: int | None
-    target_ok_per_fold: int | float | None
+    target_nok_per_fold: Optional[int]
+    target_ok_per_fold: Optional[Union[int, float]]
     random_state: int
 
 
@@ -50,9 +52,11 @@ class Stage1Config:
 class Stage2Config:
     """Stage 2 clustering configuration."""
 
-    ok_reference_ratio: float
+    model_name: str
+    metric: str
+    target_ok_to_sample: int
     n_clusters: int
-    use_dtw: bool
+    ok_reference_threshold: int
     random_state: int
 
 
@@ -114,6 +118,7 @@ def load_pipeline_config(config_name: str = "default-top5.yml") -> PipelineConfi
 
     except TypeError as e:
         logger.error(f"Invalid config structure: {e}")
+        logger.debug(f"Stage2 config content: {config_dict.get('stage2', 'MISSING')}")
         raise TypeError(f"Invalid config structure: {e}") from e
 
 
