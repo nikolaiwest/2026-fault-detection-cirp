@@ -1,2 +1,4 @@
 from .anomaly_detection import test_anomaly_detection
 from .binary_classification import test_binary_per_class
+from .stage_1_benchmark import run_stage1_benchmark
+from .stage_2_benchmark import run_stage2_benchmark
