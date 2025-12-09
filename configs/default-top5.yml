@@ -23,9 +23,12 @@ stage1:
 
 # Stage 2: Clustering
 stage2:
+  # Options (all from PyOD): 
+  # sklearn_: agglomerative, birch, dbscan, kmeans
+  # sktime_: dbscan, kmeans, kmedoids, kshapes
   model_name: "sktime_kmeans"
   metric: "erp"         
   target_ok_to_sample: 50
   ok_reference_threshold: 0 # strict!
-  n_clusters: 5
+  n_clusters: 10
   random_state: 42

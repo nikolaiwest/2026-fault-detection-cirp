@@ -8,11 +8,12 @@ to identify fault-pure clusters and filter false positives.
 from typing import Union
 
 import numpy as np
+import pandas as pd
 from numpy.typing import NDArray
 from sklearn.metrics import confusion_matrix, f1_score, precision_score, recall_score
 
 from src.models.stage_2 import STAGE2_MODELS, Stage2Model
-from src.utils.logger import get_logger
+from src.utils import get_logger
 
 logger = get_logger(__name__)
 
@@ -146,9 +147,27 @@ def run_stage2(
     logger.debug(f"Actual OK    {cm[0,0]:12d}  {cm[0,1]:13d}")
     logger.debug(f"Actual NOK   {cm[1,0]:12d}  {cm[1,1]:13d}")
 
+    # Create cluster composition DataFrame
+    cluster_stats = _create_cluster_stats_df(
+        y_clusters, ok_reference_mask, y_cluster_true
+    )
+
     logger.info("Stage 2 complete")
 
-    return stage2_predictions
+    return {
+        "y_predictions": stage2_predictions,
+        "y_clusters": y_clusters,
+        "y_true": y_cluster_true,
+        "ok_reference_mask": ok_reference_mask,
+        "x_clustered": x_cluster,
+        "metrics": {
+            "precision": float(prec),
+            "recall": float(reca),
+            "f1": float(f1_s),
+        },
+        "confusion_matrix": cm,
+        "cluster_stats": cluster_stats,
+    }
 
 
 def _determine_ok_sample_count(
@@ -247,6 +266,51 @@ def _apply_cluster_filtering_rules(
         # else: remains 0 (OK, filtered out)
 
     return predictions
+
+
+def _create_cluster_stats_df(
+    y_clusters: NDArray,
+    ok_reference_mask: NDArray,
+    y_cluster_true: NDArray,
+) -> pd.DataFrame:
+    """
+    Create DataFrame with cluster composition statistics.
+
+    Returns:
+        DataFrame with columns: cluster_id, size, n_real_faults,
+                                n_false_positives, n_ok_references, purity
+    """
+    stats = []
+
+    for c in np.unique(y_clusters):
+        cluster_mask = y_clusters == c
+        n_total = cluster_mask.sum()
+
+        # Count OK reference samples
+        n_ok_ref = ok_reference_mask[cluster_mask].sum()
+
+        # Among non-reference samples, count real faults vs false positives
+        non_ref_mask = cluster_mask & ~ok_reference_mask
+        y_non_ref = y_cluster_true[non_ref_mask]
+
+        n_real_faults = int((y_non_ref > 0).sum())
+        n_false_pos = int((y_non_ref == 0).sum())
+
+        # Calculate purity (fraction of real faults among non-references)
+        purity = n_real_faults / len(y_non_ref) if len(y_non_ref) > 0 else 0.0
+
+        stats.append(
+            {
+                "cluster_id": int(c),
+                "size": int(n_total),
+                "n_real_faults": n_real_faults,
+                "n_false_positives": n_false_pos,
+                "n_ok_references": int(n_ok_ref),
+                "purity": float(purity),
+            }
+        )
+
+    return pd.DataFrame(stats)
 
 
 def _analyze_clusters(

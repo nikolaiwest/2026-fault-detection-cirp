@@ -11,7 +11,7 @@ from numpy.typing import NDArray
 from sklearn.metrics import confusion_matrix, f1_score, precision_score, recall_score
 
 from src.models.stage_1 import STAGE1_MODELS, Stage1Model
-from src.utils.logger import get_logger
+from src.utils import get_logger
 
 logger = get_logger(__name__)
 
@@ -22,7 +22,7 @@ def run_stage1(
     model_name: str,
     contamination: float,
     random_state: int,
-) -> tuple[NDArray, NDArray]:
+) -> dict:
     """
     Stage 1: Over-sensitive anomaly detection.
 
@@ -36,11 +36,13 @@ def run_stage1(
         model_name: Name of anomaly detection model to use
         contamination: Expected fraction of anomalies (e.g., 0.02 = 2%)
         random_state: Random seed for reproducibility
-
     Returns:
-        tuple: (y_anomalies, anomaly_scores)
-            - y_anomalies: Binary predictions (0=OK, 1=NOK)
-            - anomaly_scores: Anomaly scores for each sample
+        dict: Complete results including:
+            - y_anomalies: Binary predictions
+            - anomaly_scores: Anomaly scores
+            - metrics: Dict with precision, recall, f1
+            - confusion_matrix: 2x2 numpy array
+            - y_true: Ground truth (for saving)
 
     Raises:
         ValueError: If model_name not found in STAGE1_MODELS registry
@@ -104,4 +106,16 @@ def run_stage1(
     logger.debug(f"Actual NOK   {cm[1,0]:12d}  {cm[1,1]:13d}")
 
     logger.info("Stage 1 complete")
-    return y_anomalies, anomaly_scores
+
+    # Return structured results
+    return {
+        "y_anomalies": y_anomalies,
+        "anomaly_scores": anomaly_scores,
+        "y_true": y_values,
+        "metrics": {
+            "precision": float(prec),
+            "recall": float(reca),
+            "f1": float(f1_s),
+        },
+        "confusion_matrix": cm,
+    }

@@ -11,7 +11,7 @@ sktime_kmeans:
   # n_clusters: 8 --> not used (will be overwritten by pipeline config)
   init_algorithm: "random"        # Init strategy: 'random', 'forgy', 'kmeans++', 'random_centers'
   # metric: "dtw" --> not used (will be overwritten by pipeline config)
-  n_init: 10                      # Number of initializations
+  n_init: 20                      # Number of initializations
   max_iter: 300                   # Maximum iterations
   tol: 0.000001                   # Convergence tolerance (1e-6)
   verbose: false                  # Print progress
