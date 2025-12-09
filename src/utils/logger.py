@@ -9,7 +9,7 @@ across all modules. It supports:
 - Custom section() and subsection() methods for visual separation
 
 Usage:
-    from src.utils.logger import get_logger
+    from src.utils import get_logger
 
     logger = get_logger(__name__)
     logger.section("DATA PROCESSING")
@@ -231,7 +231,7 @@ def set_level(level: int) -> None:
         level: New logging level (e.g., logging.DEBUG, logging.INFO)
 
     Example:
-        >>> from src.utils.logger import set_level
+        >>> from src.utils import set_level
         >>> import logging
         >>> set_level(logging.DEBUG)  # Enable verbose logging
     """
@@ -249,7 +249,7 @@ def get_log_file_path() -> Path:
         Path object pointing to the log file
 
     Example:
-        >>> from src.utils.logger import get_log_file_path
+        >>> from src.utils import get_log_file_path
         >>> print(f"Logs saved to: {get_log_file_path()}")
     """
     return LOG_FILE.absolute()
