@@ -1,1 +1,1 @@
-from .two_stage_approach import run
+from .two_stage_approach import run_two_stage_pipeline

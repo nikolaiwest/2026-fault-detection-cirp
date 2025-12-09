@@ -7,7 +7,6 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.svm import SVC
 
 from src.data import load_class_config, run_data_pipeline
-from src.features import apply_paa
 
 
 def test_binary_per_class():

@@ -1,0 +1,113 @@
+# Hyperparameter documentation for Stage 1 models
+# These are the default values from PyOD library
+# Pipeline only overrides: contamination, random_state (and potentially verbose & n_jobs)
+
+auto_encoder:
+  # PyOD defaults (used as-is)
+  # contamination: 0.1 --> not used (will be overwritten by pipeline config)
+  preprocessing: true
+  lr: 0.001
+  epoch_num: 10
+  batch_size: 32
+  optimizer_name: "adam"
+  device: null
+  # random_state: 42 --> not used (will be overwritten by pipeline config)
+  use_compile: false
+  compile_mode: "default"
+  verbose: 1
+  optimizer_params:
+    weight_decay: 0.00001
+  hidden_neuron_list: [64, 32]
+  hidden_activation_name: "relu"
+  batch_norm: true
+  dropout_rate: 0.2
+
+  # source: "pyod.models.auto_encoder.AutoEncoder"
+  # reference: "https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.auto_encoder"
+
+
+ecod:
+  # PyOD defaults (used as-is)
+  n_jobs: 1
+  # contamination: 0.1 --> not used (will be overwritten by pipeline config)
+
+  # source: "pyod.models.ecod.ECOD"
+  # reference: "https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.ecod"
+
+
+hbos:
+  # PyOD defaults (used as-is)
+  n_bins: 10
+  alpha: 0.1
+  tol: 0.5
+  # contamination: 0.1 --> not used (will be overwritten by pipeline config)
+
+  # source: "pyod.models.hbos.HBOS"
+  # reference: "https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.hbos"
+
+
+isolation_forest:
+  # PyOD defaults (used as-is)
+  n_estimators: 100
+  max_samples: "auto"
+  # contamination: 0.1  --> not used (will be overwritten by pipeline config)
+  max_features: 1.0
+  bootstrap: false
+  n_jobs: 1
+  behaviour: "old"
+  # random_state: null --> not used (will be overwritten by pipeline config)
+  verbose: 0
+
+  # source: "pyod.models.iforest.IForest"
+  # reference: "https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.iforest"
+
+
+local_outlier_factor:
+  # PyOD defaults (used as-is)
+  n_neighbors: 20
+  algorithm: "auto"
+  leaf_size: 30
+  metric: "minkowski"
+  p: 2
+  metric_params: null
+  # contamination: 0.1 --> not used (will be overwritten by pipeline config)
+  n_jobs: 1
+  novelty: true
+
+  # source: "pyod.models.lof.LOF"
+  # reference: "https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.lof"
+
+
+k_nearest_neighbors:
+  # PyOD defaults (used as-is)
+  # contamination: 0.1 --> not used (will be overwritten by pipeline config)
+  n_neighbors: 5
+  method: "largest"
+  radius: 1.0
+  algorithm: "auto"
+  leaf_size: 30
+  metric: "minkowski"
+  p: 2
+  metric_params: null
+  n_jobs: 1
+
+  # source: "pyod.models.knn.KNN"
+  # reference: "https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.knn"
+
+
+one_class_svm:
+  # PyOD defaults (used as-is)
+  kernel: "rbf"
+  degree: 3
+  gamma: "auto"
+  coef0: 0.0
+  tol: 0.001
+  nu: 0.5
+  shrinking: true
+  cache_size: 200
+  verbose: false
+  max_iter: -1
+  # contamination: 0.1 --> not used (will be overwritten by pipeline config)
+  
+  # source: "pyod.models.ocsvm.OCSVM"
+  # reference: "https://pyod.readthedocs.io/en/latest/pyod.models.html#module-pyod.models.ocsvm"

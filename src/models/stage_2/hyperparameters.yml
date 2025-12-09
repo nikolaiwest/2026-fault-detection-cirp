@@ -1,0 +1,124 @@
+# Hyperparameter documentation for Stage 2 clustering models
+# These are the default values from sktime/sklearn libraries
+# Pipeline only overrides: n_clusters, random_state, metric
+
+# ============================================================================
+# sktime Models (Time-Series Aware Clustering)
+# ============================================================================
+
+sktime_kmeans:
+  # TimeSeriesKMeans from sktime
+  # n_clusters: 8 --> not used (will be overwritten by pipeline config)
+  init_algorithm: "random"        # Init strategy: 'random', 'forgy', 'kmeans++', 'random_centers'
+  # metric: "dtw" --> not used (will be overwritten by pipeline config)
+  n_init: 20                      # Number of initializations
+  max_iter: 300                   # Maximum iterations
+  tol: 0.000001                   # Convergence tolerance (1e-6)
+  verbose: false                  # Print progress
+  # random_state: null --> not used (will be overwritten by pipeline config)
+  averaging_method: "mean"        # Centroid averaging: 'mean' or custom callable
+  distance_params: null           # Additional params for distance metric
+  average_params: null            # Additional params for averaging
+  
+  # source: "sktime.clustering.k_means.TimeSeriesKMeans"
+  # reference: "https://www.sktime.net/en/latest/api_reference/auto_generated/sktime.clustering.k_means.TimeSeriesKMeans.html"
+
+sktime_kmedoids:
+  # TimeSeriesKMedoids from sktime
+  # n_clusters: 8 --> not used (will be overwritten by pipeline config)
+  init_algorithm: "random"        # Init strategy: 'random' or custom callable
+  # metric: "dtw" --> not used (will be overwritten by pipeline config)
+  n_init: 10                      # Number of initializations
+  max_iter: 300                   # Maximum iterations
+  tol: 0.000001                   # Convergence tolerance (1e-6)
+  verbose: false                  # Print progress
+  # random_state: null --> not used (will be overwritten by pipeline config)
+  distance_params: null           # Additional params for distance metric
+  
+  # source: "sktime.clustering.k_medoids.TimeSeriesKMedoids"
+  # reference: "https://www.sktime.net/en/latest/api_reference/auto_generated/sktime.clustering.k_medoids.TimeSeriesKMedoids.html"
+
+sktime_dbscan:
+  # TimeSeriesDBSCAN from sktime (density-based, n_clusters not applicable)
+  # distance: "euclidean" --> not used (will be overwritten by pipeline config)
+  eps: 0.5                        # Neighborhood radius
+  min_samples: 5                  # Minimum samples to form dense region
+  algorithm: "auto"               # Algorithm: 'auto', 'ball_tree', 'kd_tree', 'brute'
+  leaf_size: 30                   # Leaf size for tree algorithms
+  distance_params: null           # Additional params for distance metric
+  n_jobs: null                    # Number of parallel jobs (null = 1)
+  
+  # source: "sktime.clustering.dbscan.TimeSeriesDBSCAN"
+  # reference: "https://www.sktime.net/en/latest/api_reference/auto_generated/sktime.clustering.dbscan.TimeSeriesDBSCAN.html"
+
+sktime_kshapes:
+  # TimeSeriesKShapes from sktime (uses shape-based distance)
+  # n_clusters: 8 --> not used (will be overwritten by pipeline config)
+  init_algorithm: "random"        # Init strategy: 'random' or ndarray of initial centroids
+  n_init: 10                      # Number of initializations
+  max_iter: 300                   # Maximum iterations
+  tol: 0.0001                     # Convergence tolerance
+  verbose: false                  # Print progress
+  # random_state: null --> not used (will be overwritten by pipeline config)
+  
+  # source: "sktime.clustering.k_shapes.TimeSeriesKShapes"
+  # reference: "https://www.sktime.net/en/latest/api_reference/auto_generated/sktime.clustering.k_shapes.TimeSeriesKShapes.html"
+
+# ============================================================================
+# sklearn Models (Fast, General-Purpose Clustering)
+# ============================================================================
+
+sklearn_kmeans:
+  # Standard KMeans from sklearn
+  # n_clusters: 8 --> not used (will be overwritten by pipeline config)
+  init: "k-means++"               # Init method: 'k-means++', 'random'
+  n_init: "auto"                  # Number of initializations: 'auto' or int (10 was old default)
+  max_iter: 300                   # Maximum iterations
+  tol: 0.0001                     # Convergence tolerance
+  verbose: 0                      # Verbosity level
+  # random_state: null --> not used (will be overwritten by pipeline config)
+  copy_x: true                    # Pre-center data (affects memory)
+  algorithm: "lloyd"              # Algorithm: 'lloyd', 'elkan'
+  
+  # source: "sklearn.cluster.KMeans"
+  # reference: "https://scikit-learn.org/stable/modules/generated/sklearn.cluster.KMeans.html"
+
+sklearn_dbscan:
+  # Standard DBSCAN from sklearn (density-based, n_clusters not applicable)
+  eps: 0.5                        # Neighborhood radius
+  min_samples: 5                  # Minimum samples to form dense region
+  # metric: "euclidean" --> not used (will be overwritten by pipeline config)
+  metric_params: null             # Additional keyword arguments for metric
+  algorithm: "auto"               # Algorithm: 'auto', 'ball_tree', 'kd_tree', 'brute'
+  leaf_size: 30                   # Leaf size for tree algorithms
+  p: null                         # Power parameter for Minkowski metric (null = use metric default)
+  n_jobs: null                    # Number of parallel jobs (null = 1)
+  
+  # source: "sklearn.cluster.DBSCAN"
+  # reference: "https://scikit-learn.org/stable/modules/generated/sklearn.cluster.DBSCAN.html"
+
+sklearn_birch:
+  # BIRCH from sklearn (hierarchical, memory-efficient)
+  threshold: 0.5                  # Subcluster radius threshold
+  branching_factor: 50            # Max subclusters per node
+  # n_clusters: 3 --> not used (will be overwritten by pipeline config)
+  compute_labels: true            # Compute labels for each sample
+  copy: true                      # Copy data (deprecated parameter, kept for compatibility)
+  
+  # source: "sklearn.cluster.Birch"
+  # reference: "https://scikit-learn.org/stable/modules/generated/sklearn.cluster.Birch.html"
+
+sklearn_agglomerative:
+  # Agglomerative Clustering from sklearn
+  # Note: 'ward' linkage requires metric='euclidean' (sklearn constraint)
+  # n_clusters: 2 --> not used (will be overwritten by pipeline config)
+  # metric: "euclidean" --> not used (will be overwritten by pipeline config)
+  memory: null                    # Path to cache directory (null = no caching)
+  connectivity: null              # Connectivity matrix (null = no connectivity constraints)
+  compute_full_tree: "auto"       # Compute full tree: 'auto', true, false
+  linkage: "ward"                 # Linkage: 'ward', 'complete', 'average', 'single'
+  distance_threshold: null        # Threshold for distance (null = use n_clusters)
+  compute_distances: false        # Compute distances between clusters
+  
+  # source: "sklearn.cluster.AgglomerativeClustering"
+  # reference: "https://scikit-learn.org/stable/modules/generated/sklearn.cluster.AgglomerativeClustering.html"

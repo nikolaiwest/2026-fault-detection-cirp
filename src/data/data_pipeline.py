@@ -1,3 +1,11 @@
+"""
+Data preprocessing pipeline for screw driving quality control.
+
+Handles loading, filtering, and preprocessing of screw driving measurements
+from the PyScrew dataset. Transforms raw data into ML-ready format with
+encoded labels and extracted torque features.
+"""
+
 import json
 import pickle
 from pathlib import Path
@@ -5,9 +13,12 @@ from typing import Dict, List
 
 import numpy as np
 import pyscrew
-from imblearn.over_sampling import SMOTE
+
+from src.utils import get_logger
 
 from .config_loader import load_class_config
+
+logger = get_logger(__name__)
 
 NORMAL_CLASS_VALUE = "000_normal-observations"
 
@@ -16,8 +27,8 @@ def run_data_pipeline(
     force_reload: bool = False,
     keep_exceptions: bool = False,
     classes_to_keep: list[str] | None = None,
-    target_ok_ratio: float = 0.99,
-) -> Dict:
+    paa_segments: int | None = None,
+) -> tuple[np.ndarray, np.ndarray, Dict[str, int]]:
     """
     Main interface to execute the complete data preprocessing pipeline.
 
@@ -25,55 +36,75 @@ def run_data_pipeline(
         force_reload: Reload from PyScrew (will ignore the cache)
         keep_exceptions: If True, keep measurement exceptions (default: remove)
         classes_to_keep: List of class names to keep (uses "all" if set to None)
-        target_ok_ratio: Target ratio of OK samples (0.99 = 99% OK, 1% faults)
+
+    Returns:
+        tuple: (x_values, y_values, label_mapping)
+            - x_values: numpy array of torque measurements
+            - y_values: numpy array of encoded labels
+            - label_mapping: dict mapping class names to integer labels
     """
 
     if classes_to_keep is None:
         classes_to_keep = load_class_config("all")
 
-    print("Starting pipeline...")
+    logger.info("Starting data pipeline")
+    logger.debug(
+        f"Parameters: force_reload={force_reload}, keep_exceptions={keep_exceptions}, n_classes={len(classes_to_keep)}"
+    )
 
     # Step 1: Load s04 data from PyScrew (hosted public on Zenodo)
-    data = load_data(force_reload)
+    data = _load_data(force_reload)
 
     # Step 2: Remove all scenario exceptions (with issues during recording)
-    data = remove_exceptions(data, keep_exceptions)
+    data = _remove_exceptions(data, keep_exceptions)
 
     # Step 3: Create normal class from scenario_condition == 'normal'
-    data = create_ok_class(data)
+    data = _create_ok_class(data)
 
     # Step 4: Limit the number of classes (for easier understanding)
-    data = filter_classes(data, classes_to_keep)
+    data = _filter_classes(data, classes_to_keep)
 
     # Step 5: Extract torque as only measurements (others are not needed)
-    data = keep_only_torque(data)
+    data = _keep_only_torque(data)
 
-    # Step 6: Upsample normal observations (to achieve a target OK ratio)
-    data = upsample_normal_runs(data, target_ok_ratio)
+    # Step 6: Use ints to represent the class values (originally str)
+    data = _encode_labels(data)
 
-    # Step 7: Use ints to represent the class values (originally str)
-    data = encode_labels(data)
+    # Step 7:  Apply PAA
+    data = _apply_paa(data, paa_segments)
 
-    print("Pipeline complete!")
+    # Step 8: Unpack and convert to numpy arrays
+    data = _unpack_and_convert(data)
+
     return data
 
 
-def load_data(force_reload=False):
-    """Load and cache preprocessed screw driving data."""
+def _load_data(force_reload=False):
+    """
+    Load and cache preprocessed screw driving data.
+
+    Args:
+        force_reload: If True, download fresh data from PyScrew
+
+    Returns:
+        dict: PyScrew data dictionary with torque and metadata
+    """
     # Define cache path
     cache_file = Path("data/processed/pyscrew_s04.pkl")
     cache_file.parent.mkdir(parents=True, exist_ok=True)
 
     # Check if cache exists and should be used
     if cache_file.exists() and not force_reload:
-        print(f"Loading cached data from {cache_file}")
+        logger.info(f"Loading cached data from {cache_file}")
         with open(cache_file, "rb") as f:
             data = pickle.load(f)
-        print(f"Loaded {len(data['torque_values'])} samples from cache")
+        logger.info(f"Loaded {len(data['torque_values'])} samples from cache")
         return data
 
     # Load fresh data from pyscrew
-    print("Loading data from pyscrew (this may take a few minutes)...")
+    logger.info("Loading data from PyScrew (this may take a few minutes)")
+    logger.debug("Downloading from Zenodo repository")
+
     data = pyscrew.get_data(
         scenario="s04",
         screw_positions="left",
@@ -85,24 +116,31 @@ def load_data(force_reload=False):
     )
 
     # Save to cache
-    print(f"Saving to cache: {cache_file}")
+    logger.info(f"Caching data to {cache_file}")
     with open(cache_file, "wb") as f:
         pickle.dump(data, f)
 
-    print(f"Loaded and cached {len(data['torque_values'])} samples")
+    logger.info(f"Loaded and cached {len(data['torque_values'])} samples")
     return data
 
 
-def remove_exceptions(data: Dict, keep: bool = False) -> Dict:
+def _remove_exceptions(data: Dict, keep: bool = False) -> Dict:
     """
     Remove samples with measurement problems (not real faults).
 
     Measurement exceptions are indicated by 'scenario_exception' == 1.
     These are recording issues, not actual process faults.
+
+    Args:
+        data: PyScrew data dictionary
+        keep: If True, keep exception samples
+
+    Returns:
+        dict: Filtered data dictionary
     """
 
     if keep:
-        print("Keeping all samples (including exceptions)")
+        logger.info("Keeping all samples (including exceptions)")
         return data
 
     # Get exception mask (True = keep, False = remove)
@@ -113,7 +151,10 @@ def remove_exceptions(data: Dict, keep: bool = False) -> Dict:
     n_exceptions = sum(1 for exc in exceptions if exc == 1)
     n_keep = sum(keep_mask)
 
-    print(f"- Found {n_exceptions} exceptions in {n_total} samples, keeping {n_keep}")
+    logger.info(
+        f"Found {n_exceptions} exceptions in {n_total} samples, keeping {n_keep}"
+    )
+    logger.debug(f"Exception removal rate: {n_exceptions/n_total:.1%}")
 
     # Use the mask to filter all dict fields
     filtered_data = {}
@@ -123,12 +164,16 @@ def remove_exceptions(data: Dict, keep: bool = False) -> Dict:
             filtered_data[key] = [v for v, keep in zip(values, keep_mask) if keep]
         elif isinstance(values, (list, tuple)):
             # Different length found, something is wrong with the raw data
+            logger.error(
+                f"Field '{key}' has unexpected length {len(values)} (expected {n_total})"
+            )
             raise ValueError(
                 f"Field '{key}' has unexpected length {len(values)} "
                 f"(expected {n_total}). Data structure inconsistent!"
             )
         else:
             # Not a list, this should not happen in pyscrew data
+            logger.error(f"Field '{key}' has unexpected type {type(values).__name__}")
             raise TypeError(
                 f"Field '{key}' is type {type(values).__name__}, expected list. "
                 f"Data structure unexpected!"
@@ -137,14 +182,22 @@ def remove_exceptions(data: Dict, keep: bool = False) -> Dict:
     return filtered_data
 
 
-def create_ok_class(data: Dict) -> Dict:
+def _create_ok_class(data: Dict) -> Dict:
     """
-    Create '000_normal-observations' class from all normal samples. Overwrites class_values
-    with '000_normal-observations' where scenario_condition == 'normal'.
+    Create '000_normal-observations' class from all normal samples.
 
-    Originally, normal and faulty data was recorded alternately to prevent temporal factors
-    from influencing the observations. To obtain a pure OK class, normal observations must
-    therefore be sorted into their own class.
+    Overwrites class_values with '000_normal-observations' where
+    scenario_condition == 'normal'.
+
+    Originally, normal and faulty data was recorded alternately to prevent temporal
+    factors from influencing the observations. To obtain a pure OK class, normal
+    observations must therefore be sorted into their own class.
+
+    Args:
+        data: PyScrew data dictionary
+
+    Returns:
+        dict: Data with separated normal class
     """
 
     scenario_conditions = data["scenario_condition"]
@@ -161,24 +214,33 @@ def create_ok_class(data: Dict) -> Dict:
     n_ok = sum(1 for c in new_class_values if c == NORMAL_CLASS_VALUE)
     n_faults = len(new_class_values) - n_ok
 
-    print(f"- Separated '000_normal-observations': {n_ok} normal, {n_faults} faults")
+    logger.info(f"Separated normal class: {n_ok} OK samples, {n_faults} fault samples")
+    logger.debug(f"OK ratio: {n_ok/len(new_class_values):.1%}")
 
     data["class_values"] = new_class_values
     return data
 
 
-def filter_classes(data: Dict, classes: List[str]) -> Dict:
+def _filter_classes(data: Dict, classes: List[str]) -> Dict:
     """
     Keep only the selected fault classes by simple filtering.
+
     The classes used in the list were selected based on their origin (one per each
     group of error causes) and their general sense of uniqueness.
+
+    Args:
+        data: PyScrew data dictionary
+        classes: List of fault class names to keep
+
+    Returns:
+        dict: Filtered data with selected classes only
     """
 
     # Always include normal class
     classes_with_normal = classes + [NORMAL_CLASS_VALUE]
 
     if not classes_with_normal:
-        print("- No classes specified, keeping all samples")
+        logger.warning("No classes specified, keeping all samples")
         return data
 
     # Get class mask (True = keep, False = remove)
@@ -189,7 +251,12 @@ def filter_classes(data: Dict, classes: List[str]) -> Dict:
     n_keep = sum(keep_mask)
     n_remove = n_total - n_keep
 
-    print(f"- Filter to {len(classes)} classes, removing {n_remove}, keeping {n_keep}")
+    logger.info(
+        f"Filtering to {len(classes)} fault classes: removing {n_remove}, keeping {n_keep}"
+    )
+    logger.debug(
+        f"Selected classes: {', '.join(classes[:3])}{'...' if len(classes) > 3 else ''}"
+    )
 
     # Use the mask to filter all dict fields
     filtered_data = {}
@@ -197,11 +264,15 @@ def filter_classes(data: Dict, classes: List[str]) -> Dict:
         if isinstance(values, (list, tuple)) and len(values) == n_total:
             filtered_data[key] = [v for v, keep in zip(values, keep_mask) if keep]
         elif isinstance(values, (list, tuple)):
+            logger.error(
+                f"Field '{key}' has unexpected length {len(values)} (expected {n_total})"
+            )
             raise ValueError(
                 f"Field '{key}' has unexpected length {len(values)} "
                 f"(expected {n_total}). Data structure inconsistent!"
             )
         else:
+            logger.error(f"Field '{key}' has unexpected type {type(values).__name__}")
             raise TypeError(
                 f"Field '{key}' is type {type(values).__name__}, expected list. "
                 f"Data structure unexpected!"
@@ -210,10 +281,24 @@ def filter_classes(data: Dict, classes: List[str]) -> Dict:
     return filtered_data
 
 
-def keep_only_torque(data: Dict) -> Dict:
-    """Extract torque only labels, by dropping all other measurements."""
+def _keep_only_torque(data: Dict) -> Dict:
+    """
+    Extract torque and labels only, dropping all other measurements.
 
-    print(f"- Keeping only torque and classes, dropping {len(data) - 2} fields")
+    Args:
+        data: PyScrew data dictionary
+
+    Returns:
+        dict: Reduced data with torque and class values only
+    """
+
+    n_dropped = len(data) - 2
+    logger.info(
+        f"Keeping only torque and class labels, dropping {n_dropped} metadata fields"
+    )
+    logger.debug(
+        f"Dropped fields: {', '.join([k for k in data.keys() if k not in ['torque_values', 'class_values']][:5])}"
+    )
 
     return {
         "torque_values": data["torque_values"],
@@ -221,68 +306,19 @@ def keep_only_torque(data: Dict) -> Dict:
     }
 
 
-def upsample_normal_runs(data: Dict, ratio: float) -> Dict:
-    """
-    SMOTE upsampling of OK class to achieve target ratio.
-
-    Upsampling the normal class aims to create more natural imbalances in the screw
-    data. Synthetic samples are labeled as '001_artificial_ok' for transparency.
-    """
-
-    # Identify normal samples
-    normal_label = "000_normal-observations"  # default value for OK in PyScrew "s04"
-    class_values = data["class_values"]
-
-    n_total = len(class_values)
-    n_normal = sum(1 for c in class_values if c == normal_label)
-    n_faults = n_total - n_normal
-
-    # Calculate how many normal samples are needed
-    # ratio = n_normal_target / (n_normal_target + n_faults)
-    n_normal_target = int((ratio * n_faults) / (1 - ratio))
-    n_synthetic = n_normal_target - n_normal
-
-    if n_synthetic <= 0:
-        print(f"- Already have {n_normal} ok samples (ratio: {n_normal/n_total:.2%})")
-        print(f"- No upsampling needed for target ratio {ratio:.2%}")
-        return data
-
-    print(f"- Current: {n_normal} OK, {n_faults} NOK (ratio: {n_normal/n_total:.2%})")
-    print(f"- Target ratio: {ratio:.2%} → need {n_normal_target} normal samples")
-    print(f"- Generating {n_synthetic} synthetic samples with SMOTE...")
-
-    # Prepare data for SMOTE
-    torque_array = np.array(data["torque_values"])
-    labels_binary = [1 if c == normal_label else 0 for c in class_values]
-
-    # Apply SMOTE
-    smote = SMOTE(sampling_strategy={1: n_normal_target}, random_state=42)
-    torque_resampled, _ = smote.fit_resample(torque_array, labels_binary)
-
-    # Split back into original + synthetic
-    torque_synthetic = torque_resampled[n_total:]
-
-    # Create labels for synthetic samples
-    labels_synthetic = ["001_artificial_ok"] * n_synthetic
-
-    # Append to original data
-    data["torque_values"] = data["torque_values"] + torque_synthetic.tolist()
-    data["class_values"] = data["class_values"] + labels_synthetic
-
-    print(f"- Added {n_synthetic} synth. samples, total: {len(data['class_values'])}")
-
-    return data
-
-
-def encode_labels(data: Dict) -> Dict:
+def _encode_labels(data: Dict) -> Dict:
     """
     Int-encoding for the string representations of 'class_values'.
 
     Normal class ('000_normal-observations' or '001_artificial_ok') always gets label 0.
     Saves label mapping to JSON for later reference.
-    """
 
-    import json
+    Args:
+        data: Data dictionary with string class labels
+
+    Returns:
+        dict: Data with integer-encoded labels and mapping
+    """
 
     class_values = data["class_values"]
 
@@ -318,13 +354,85 @@ def encode_labels(data: Dict) -> Dict:
     n_normal = sum(1 for lbl in encoded_labels if lbl == 0)
     n_faults = len(encoded_labels) - n_normal
 
-    print(
-        f"- Encoded {len(label_to_int)} classes: {n_normal} normal (0), {n_faults} faults (1-{fault_idx-1})"
+    logger.info(
+        f"Encoded {len(label_to_int)} classes: {n_normal} normal (0), {n_faults} faults (1-{fault_idx-1})"
     )
-    print(f"- Saved mapping to {mapping_file}")
+    logger.info(f"Saved label mapping to {mapping_file}")
+    logger.debug(
+        f"Label distribution: {dict(sorted([(v, class_values.count(k)) for k, v in label_to_int.items()]))}"
+    )
 
     return {
         "torque_values": data["torque_values"],
         "labels": encoded_labels,
         "label_mapping": label_to_int,
     }
+
+
+def _apply_paa(data: Dict, n_segments: int) -> Dict:
+    """
+    Apply Piecewise Aggregate Approximation (PAA) to torque values.
+
+    Args:
+        data: Dictionary containing 'torque_values'
+        n_segments: Number of segments for PAA compression
+
+    Returns:
+        dict: Updated data dictionary with PAA-compressed torque_values
+    """
+    if n_segments is None:
+        logger.warning("Received n_segments=None, skipping PAA step")
+        return data
+
+    X = np.array(data["torque_values"])
+    n_samples, n_timepoints = X.shape
+
+    # Case 1: impossible configuration
+    if n_segments > n_timepoints:
+        logger.error(
+            f"PAA failed: n_segments ({n_segments}) > n_timepoints ({n_timepoints})"
+        )
+        raise ValueError(
+            f"PAA requires n_segments <= n_timepoints, but got {n_segments} > {n_timepoints}"
+        )
+
+    # Case 2: same length → no PAA needed
+    if n_segments == n_timepoints:
+        logger.info(
+            f"PAA skipped: n_segments equals current length ({n_timepoints}), data unchanged"
+        )
+        return data
+
+    # Case 3: apply PAA normally
+    segment_size = n_timepoints // n_segments
+    cutoff = segment_size * n_segments
+
+    logger.info(
+        f"Applying PAA: {n_timepoints} → {n_segments} (segment size={segment_size})"
+    )
+    logger.debug(f"PAA cutoff: using first {cutoff} of {n_timepoints} values")
+
+    X_reshaped = X[:, :cutoff].reshape(n_samples, n_segments, segment_size)
+    X_paa = X_reshaped.mean(axis=2)
+
+    data["torque_values"] = X_paa.tolist()
+    return data
+
+
+def _unpack_and_convert(data: Dict) -> tuple[np.ndarray, np.ndarray, Dict[str, int]]:
+    """
+    Unpack pipeline output dict into convenient tuple format.
+
+    Args:
+        data: Output from encode_labels()
+
+    Returns:
+        tuple: (x_values, y_values, label_mapping)
+    """
+    x_values = np.array(data["torque_values"])
+    y_values = np.array(data["labels"])
+    label_mapping = data["label_mapping"]
+
+    logger.debug(f"Final shapes: X={x_values.shape}, y={y_values.shape}")
+
+    return x_values, y_values, label_mapping

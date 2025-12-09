@@ -1,0 +1,34 @@
+# Data pipeline parameters
+data:
+  force_reload: false
+  keep_exceptions: false
+  classes_to_keep: "top5"
+  paa_segments: 200 # set to None or 2000 to maintain original length
+
+# Cross-validation parameters
+cross_validation:
+  n_splits: 5
+  target_nok_per_fold: 50
+  target_ok_per_fold: 4950
+  random_state: 42
+
+# Stage 1: Anomaly detection
+stage1:
+  # Options (all from PyOD): 
+  # auto_encoder, ecod, hbos, isolation_forest
+  # k_nearest_neighbors, local_outlier_factor, one_class_svm
+  model_name: "k_nearest_neighbors"  
+  contamination: 0.03
+  random_state: 42
+
+# Stage 2: Clustering
+stage2:
+  # Options (all from PyOD): 
+  # sklearn_: agglomerative, birch, dbscan, kmeans
+  # sktime_: dbscan, kmeans, kmedoids, kshapes
+  model_name: "sktime_kmeans"
+  metric: "erp"         
+  target_ok_to_sample: 50
+  ok_reference_threshold: 0 # strict!
+  n_clusters: 10
+  random_state: 42
