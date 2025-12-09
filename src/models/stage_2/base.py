@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from numpy.typing import NDArray
 
 from src.data.config_loader import load_model_config
-from src.utils.logger import get_logger
+from src.utils import get_logger
 
 logger = get_logger(__name__)
 

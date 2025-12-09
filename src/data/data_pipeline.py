@@ -14,7 +14,7 @@ from typing import Dict, List
 import numpy as np
 import pyscrew
 
-from src.utils.logger import get_logger
+from src.utils import get_logger
 
 from .config_loader import load_class_config
 

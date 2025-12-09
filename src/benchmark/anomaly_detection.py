@@ -8,7 +8,6 @@ from sklearn.metrics import f1_score, precision_score, recall_score
 from sklearn.model_selection import train_test_split
 
 from src.data import load_class_config, run_data_pipeline
-from src.features import apply_paa
 
 
 def test_anomaly_detection():

@@ -8,7 +8,7 @@ stratification to ensure balanced, representative folds for evaluation.
 import numpy as np
 from numpy.typing import NDArray
 
-from src.utils.logger import get_logger
+from src.utils import get_logger
 
 logger = get_logger(__name__)
 
