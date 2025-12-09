@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from numpy.typing import NDArray
 
-from src.utils.logger import get_logger
+from src.utils import get_logger
 
 logger = get_logger(__name__)
 
@@ -26,7 +26,7 @@ def plot_fault_classes(
     n_samples_per_class: int = 10,
     output_dir: str = "results/figures",
     filename: str = "fault_classes_overview.png",
-    figsize: tuple = (15, 10),
+    figsize: tuple = (10, 8),
     dpi: int = 300,
 ) -> Path:
     """
@@ -252,7 +252,7 @@ def plot_single_class(
 
 
 # Example usage
-if __name__ == "__main__":
+def plot_top_5_errors():
     # This demonstrates how to use the functions
     from src.data import load_class_config, run_data_pipeline
 
@@ -265,10 +265,11 @@ if __name__ == "__main__":
     overview_path = plot_fault_classes(x_values, y_true, label_mapping)
     print(f"Created overview plot: {overview_path}")
 
-    # Create detailed plot for class 3 (which we know is very distinct)
-    int_to_name = {v: k for k, v in label_mapping.items()}
-    if 3 in int_to_name:
-        detail_path = plot_single_class(
-            x_values, y_true, class_label=3, class_name=int_to_name[3]
-        )
-        print(f"Created detailed plot: {detail_path}")
+    # Create detailed plot for all five classes:
+    for i in range(1, 6):
+        int_to_name = {v: k for k, v in label_mapping.items()}
+        if i in int_to_name:
+            detail_path = plot_single_class(
+                x_values, y_true, class_label=i, class_name=int_to_name[i]
+            )
+            print(f"Created detailed plot: {detail_path}")
