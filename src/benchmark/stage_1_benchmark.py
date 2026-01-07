@@ -168,7 +168,7 @@ def _generate_plots(df: pd.DataFrame):
     colors = plt.cm.tab10(range(len(df["model"].unique())))
 
     # 1. F1-Score by Contamination (line plot)
-    plt.figure(figsize=(12, 6))
+    plt.figure(figsize=(9, 7))
     for i, model in enumerate(df["model"].unique()):
         model_data = df[df["model"] == model]
         plt.plot(
@@ -189,8 +189,8 @@ def _generate_plots(df: pd.DataFrame):
 
     plt.xlabel("Contamination Rate", fontsize=12)
     plt.ylabel("F1-Score", fontsize=12)
-    plt.title("Model Performance vs Contamination Rate", fontsize=14, fontweight="bold")
-    plt.legend(bbox_to_anchor=(1.05, 1), loc="upper left")
+    # plt.title("Model Performance vs Contamination Rate", fontsize=14, fontweight="bold")
+    plt.legend(loc="upper right")
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
     plt.savefig(OUTPUT_DIR / "f1_by_contamination.png", dpi=300, bbox_inches="tight")
@@ -198,7 +198,7 @@ def _generate_plots(df: pd.DataFrame):
     print(f"✓ Plot saved: f1_by_contamination.png")
 
     # 2. Precision by Contamination (NEW)
-    plt.figure(figsize=(12, 6))
+    plt.figure(figsize=(9, 7))
     for i, model in enumerate(df["model"].unique()):
         model_data = df[df["model"] == model]
         plt.plot(
@@ -220,7 +220,7 @@ def _generate_plots(df: pd.DataFrame):
     plt.xlabel("Contamination Rate", fontsize=12)
     plt.ylabel("Precision", fontsize=12)
     plt.title("Precision vs Contamination Rate", fontsize=14, fontweight="bold")
-    plt.legend(bbox_to_anchor=(1.05, 1), loc="upper left")
+    plt.legend(loc="upper right")
     plt.grid(True, alpha=0.3)
     plt.tight_layout()
     plt.savefig(
@@ -464,7 +464,3 @@ def _print_summary(df: pd.DataFrame):
         print(
             f"  {row['model']:<20} @ {row['contamination']:.2%}: F1={row['f1_mean']:.3f}, Time={row['time_mean']:.3f}s"
         )
-
-
-if __name__ == "__main__":
-    run_stage1_benchmark()

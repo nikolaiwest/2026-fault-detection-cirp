@@ -1,4 +1,5 @@
-from .anomaly_detection import test_anomaly_detection
-from .binary_classification import test_binary_per_class
+from .binary_fault_comparison import run_binary_fault_comparison
+from .semi_supervised_classification import run_semi_supervised_classification_benchmark
 from .stage_1_benchmark import run_stage1_benchmark
 from .stage_2_benchmark import run_stage2_benchmark
+from .supervised_classification import run_supervised_classification_benchmark
