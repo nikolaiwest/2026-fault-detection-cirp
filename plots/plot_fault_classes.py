@@ -26,7 +26,7 @@ def plot_fault_classes(
     n_samples_per_class: int = 10,
     output_dir: str = "results/figures",
     filename: str = "fault_classes_overview.png",
-    figsize: tuple = (10, 8),
+    figsize: tuple = (9, 7),
     dpi: int = 300,
 ) -> Path:
     """
@@ -69,7 +69,7 @@ def plot_fault_classes(
     logger.debug(f"Found {n_classes} classes: {list(int_to_name.values())}")
 
     # Create figure with 2x3 subplots
-    fig, axes = plt.subplots(2, 3, figsize=figsize)
+    fig, axes = plt.subplots(2, 3, figsize=figsize, sharex=True, sharey=True)
     axes = axes.flatten()
 
     # Plot each class
@@ -101,11 +101,23 @@ def plot_fault_classes(
 
         # Plot each sample as a semi-transparent line
         for sample in samples_to_plot:
-            ax.plot(sample, alpha=0.6, linewidth=1)
+            ax.plot(
+                sample,
+                alpha=0.5,
+                linewidth=1,
+                color="firebrick" if class_idx != 0 else "forestgreen",
+            )
 
         # Add mean curve as thick line
         mean_curve = class_samples.mean(axis=0)
-        ax.plot(mean_curve, color="black", linewidth=2.5, label="Mean", alpha=0.8)
+        ax.plot(
+            mean_curve,
+            color="black",
+            linewidth=2.0,
+            label="Mean",
+            alpha=0.8,
+            linestyle="--",
+        )
 
         # Formatting
         class_name = int_to_name.get(class_idx, f"Class {class_idx}")
@@ -114,8 +126,14 @@ def plot_fault_classes(
             class_name = class_name[:37] + "..."
 
         ax.set_title(f"Class {class_idx}: {class_name}", fontsize=10, fontweight="bold")
-        ax.set_xlabel("Time Point", fontsize=9)
-        ax.set_ylabel("Torque", fontsize=9)
+
+        # Only set labels on edge subplots
+        if class_idx >= 3:  # Bottom row
+            ax.set_xlabel("Time Increment", fontsize=9)
+
+        if class_idx % 3 == 0:  # Left column
+            ax.set_ylabel("Torque", fontsize=9)
+
         ax.grid(True, alpha=0.3)
         ax.legend(loc="upper right", fontsize=8)
 
@@ -123,7 +141,7 @@ def plot_fault_classes(
         ax.text(
             0.02,
             0.98,
-            f"n={len(class_samples)}",
+            f"n={len(class_samples)} (10 displayed)",
             transform=ax.transAxes,
             fontsize=8,
             verticalalignment="top",
@@ -133,14 +151,6 @@ def plot_fault_classes(
     # Hide unused subplots (if less than 6 classes)
     for idx in range(n_classes, 6):
         axes[idx].axis("off")
-
-    # Overall title
-    fig.suptitle(
-        "Fault Class Time Series Overview",
-        fontsize=14,
-        fontweight="bold",
-        y=0.995,
-    )
 
     # Adjust layout to prevent overlap
     plt.tight_layout()
@@ -213,7 +223,14 @@ def plot_single_class(
     mean_curve = class_samples.mean(axis=0)
     std_curve = class_samples.std(axis=0)
 
-    ax.plot(mean_curve, color="black", linewidth=2.5, label="Mean", zorder=10)
+    ax.plot(
+        mean_curve,
+        color="black",
+        linewidth=2.5,
+        label="Mean",
+        zorder=10,
+        linestyle="--",
+    )
     ax.fill_between(
         range(len(mean_curve)),
         mean_curve - std_curve,
@@ -229,7 +246,7 @@ def plot_single_class(
         fontsize=12,
         fontweight="bold",
     )
-    ax.set_xlabel("Time Point", fontsize=11)
+    ax.set_xlabel("Time Increment", fontsize=11)
     ax.set_ylabel("Torque", fontsize=11)
     ax.grid(True, alpha=0.3)
     ax.legend(loc="upper right", fontsize=10)
