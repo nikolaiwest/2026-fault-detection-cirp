@@ -12,6 +12,7 @@ dependencies = [
     "pyod>=2.0.5",
     "pyscrew>=1.2.2",
     "scikit-learn>=1.7.2",
+    "seaborn>=0.13.2",
     "sktime>=0.39.0",
     "torch>=2.9.1",
     "tslearn>=0.7.0",
